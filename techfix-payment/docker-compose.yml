@@ -2,47 +2,22 @@ version: '3.8'
 
 services:
 
-  postgres:
-    image: postgres:16-alpine
-    container_name: techfix_payment_db
-    environment:
-      POSTGRES_DB: techfix_payment
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5433:5432"
-    volumes:
-      - techfix_payment_data:/var/lib/postgresql/data
-    networks:
-      - techfix_payment_net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   payment-service:
     build: .
     container_name: techfix_payment_service
     ports:
       - "8081:8081"
     environment:
-      DB_HOST: postgres
+      DB_HOST: host.docker.internal
       DB_PORT: 5432
       DB_NAME: techfix_payment
-      DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_USER: techfix_admin
+      DB_PASSWORD: TechFix2024!
       SERVER_PORT: 8081
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - techfix_payment_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
-volumes:
-  techfix_payment_data:
-
 networks:
-  techfix_payment_net:
+  default:
     driver: bridge
