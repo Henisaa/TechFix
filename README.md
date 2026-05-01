@@ -5,14 +5,13 @@ Esta es una aplicación web completa con microservicios Java Spring Boot y front
 ## Requisitos
 - Docker y Docker Compose
 - Descomprimir los microservicios proporcionados en los directorios correspondientes
+- Un cerebro humano
 
 ## Instrucciones de Uso
 
-1. Coloca los zips de microservicios en `./microservicios/roles` y `./microservicios/pagos`.
-   - El microservicio de roles debe estar en `./microservicios/roles/modification`
-   - El microservicio de pagos debe estar en `./microservicios/pagos/techfix-payment`
-2. Ejecuta `docker compose up --build` en la raíz del proyecto.
-3. Abre `http://localhost:3000` en tu navegador.
+
+1. Ejecuta `docker compose up --build` en la raíz del proyecto.
+2. Abre `http://localhost:3000` en tu navegador.
 
 ## Microservicios
 
