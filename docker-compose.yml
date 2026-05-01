@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  postgres_users:
+    image: postgres:16-alpine
+    container_name: techfix_db_users
+    environment:
+      POSTGRES_DB: techfix_users
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - techfix_users_data:/var/lib/postgresql/data
+    networks:
+      - techfix_net
+
+  user-service:
+    build: ./microservicios/roles/modification
+    container_name: techfix_user_service
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres_users
+      DB_PORT: 5432
+      DB_NAME: techfix_users
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      - postgres_users
+    networks:
+      - techfix_net
+
+  postgres_payment:
+    image: postgres:16-alpine
+    container_name: techfix_db_payment
+    environment:
+      POSTGRES_DB: techfix_payment
+      POSTGRES_USER: techfix_admin
+      POSTGRES_PASSWORD: TechFix2024!
+    ports:
+      - "5433:5432"
+    volumes:
+      - techfix_payment_data:/var/lib/postgresql/data
+    networks:
+      - techfix_net
+
+  payment-service:
+    build: ./microservicios/pagos/techfix-payment
+    container_name: techfix_payment_service
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: postgres_payment
+      DB_PORT: 5432
+      DB_NAME: techfix_payment
+      DB_USER: techfix_admin
+      DB_PASSWORD: TechFix2024!
+      SERVER_PORT: 8081
+    depends_on:
+      - postgres_payment
+    networks:
+      - techfix_net
+
+  frontend:
+    build: ./frontend
+    container_name: techfix_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_USER_SERVICE=http://localhost:8080
+      - VITE_PAYMENT_SERVICE=http://localhost:8081
+      - VITE_INVENTARIO_SERVICE=http://localhost:8082
+      - VITE_AGENDAR_SERVICE=http://localhost:8083
+      - VITE_ORDENES_SERVICE=http://localhost:8084
+    depends_on:
+      - user-service
+      - payment-service
+    networks:
+      - techfix_net
+
+networks:
+  techfix_net:
+    driver: bridge
+
+volumes:
+  techfix_users_data:
+  techfix_payment_data:
