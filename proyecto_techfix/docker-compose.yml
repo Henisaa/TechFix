@@ -1,0 +1,56 @@
+version: "3.9"
+
+# ============================================================
+#  TechFix Software — Docker Compose
+#  Phase 1: Stock Microservice + PostgreSQL
+# ============================================================
+
+networks:
+  techfix_net:
+    driver: bridge
+
+services:
+
+  # ── PostgreSQL: Stock Database ───────────────────────────
+  stock_db:
+    image: postgres:16-alpine
+    container_name: techfix_stock_db
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    environment:
+      POSTGRES_USER: ${STOCK_DB_USER}
+      POSTGRES_PASSWORD: ${STOCK_DB_PASSWORD}
+      POSTGRES_DB: ${STOCK_DB_NAME}
+    ports:
+      - "${STOCK_DB_PORT}:5432"
+    volumes:
+      - ./data/stock_db:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${STOCK_DB_USER} -d ${STOCK_DB_NAME}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Stock Microservice (Spring Boot) ─────────────────────
+  stock_service:
+    build:
+      context: ./microservicios/stock
+      dockerfile: Dockerfile
+    container_name: techfix_stock_service
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    env_file:
+      - .env
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${STOCK_DB_HOST}:5432/${STOCK_DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${STOCK_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${STOCK_DB_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "${STOCK_SERVICE_PORT}:8001"
+    depends_on:
+      stock_db:
+        condition: service_healthy
