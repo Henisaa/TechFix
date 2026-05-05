@@ -3,6 +3,7 @@ version: "3.9"
 # ============================================================
 #  TechFix Software — Docker Compose
 #  Phase 1: Stock Microservice + PostgreSQL
+#  Phase 2: Agendar Hora Microservice + PostgreSQL
 # ============================================================
 
 networks:
@@ -53,4 +54,48 @@ services:
       - "${STOCK_SERVICE_PORT}:8001"
     depends_on:
       stock_db:
+        condition: service_healthy
+
+  # ── PostgreSQL: Agenda Database ───────────────────────────
+  agenda_db:
+    image: postgres:16-alpine
+    container_name: techfix_agenda_db
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    environment:
+      POSTGRES_USER: ${AGENDA_DB_USER}
+      POSTGRES_PASSWORD: ${AGENDA_DB_PASSWORD}
+      POSTGRES_DB: ${AGENDA_DB_NAME}
+    ports:
+      - "${AGENDA_DB_PORT}:5432"
+    volumes:
+      - ./data/agenda_db:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${AGENDA_DB_USER} -d ${AGENDA_DB_NAME}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Agendar Hora Microservice (Spring Boot) ───────────────
+  agenda_service:
+    build:
+      context: ./microservicios/agendar_hora
+      dockerfile: Dockerfile
+    container_name: techfix_agenda_service
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    env_file:
+      - .env
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${AGENDA_DB_HOST}:5432/${AGENDA_DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${AGENDA_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${AGENDA_DB_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "${AGENDA_SERVICE_PORT}:8002"
+    depends_on:
+      agenda_db:
         condition: service_healthy
