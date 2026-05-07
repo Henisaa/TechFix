@@ -1,0 +1,199 @@
+version: "3.9"
+networks:
+  techfix_net:
+    driver: bridge
+volumes:
+  postgres_usuarios_data:
+  postgres_pagos_data:
+  postgres_stock_data:
+  postgres_agenda_data:
+services:
+  postgres_usuarios:
+    image: postgres:16-alpine
+    container_name: techfix_postgres_usuarios
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    environment:
+      POSTGRES_DB: techfix_usuarios
+      POSTGRES_USER: techfix_usr
+      POSTGRES_PASSWORD: UsrS3cur3Pass!
+    volumes:
+      - postgres_usuarios_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U techfix_usr -d techfix_usuarios"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  postgres_pagos:
+    image: postgres:16-alpine
+    container_name: techfix_postgres_pagos
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    environment:
+      POSTGRES_DB: techfix_payment
+      POSTGRES_USER: techfix_pay
+      POSTGRES_PASSWORD: PayS3cur3Pass!
+    volumes:
+      - postgres_pagos_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U techfix_pay -d techfix_payment"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  postgres_stock:
+    image: postgres:16-alpine
+    container_name: techfix_postgres_stock
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    environment:
+      POSTGRES_DB: techfix_stock
+      POSTGRES_USER: techfix_stock
+      POSTGRES_PASSWORD: StockS3cur3Pass!
+    volumes:
+      - postgres_stock_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U techfix_stock -d techfix_stock"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  postgres_agenda:
+    image: postgres:16-alpine
+    container_name: techfix_postgres_agenda
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    environment:
+      POSTGRES_DB: techfix_agenda
+      POSTGRES_USER: techfix_agenda
+      POSTGRES_PASSWORD: AgendaS3cur3Pass!
+    volumes:
+      - postgres_agenda_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U techfix_agenda -d techfix_agenda"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  svc_roles:
+    build:
+      context: ./microservicios/roles
+      dockerfile: Dockerfile
+    container_name: techfix_svc_roles
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres_usuarios
+      DB_PORT: 5432
+      DB_NAME: techfix_usuarios
+      DB_USER: techfix_usr
+      DB_PASSWORD: UsrS3cur3Pass!
+      SERVER_PORT: 8080
+    depends_on:
+      postgres_usuarios:
+        condition: service_healthy
+  svc_pagos:
+    build:
+      context: ./microservicios/pagos
+      dockerfile: Dockerfile
+    container_name: techfix_svc_pagos
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: postgres_pagos
+      DB_PORT: 5432
+      DB_NAME: techfix_payment
+      DB_USER: techfix_pay
+      DB_PASSWORD: PayS3cur3Pass!
+      SERVER_PORT: 8081
+    depends_on:
+      postgres_pagos:
+        condition: service_healthy
+  svc_stock:
+    build:
+      context: ./microservicios/stock
+      dockerfile: Dockerfile
+    container_name: techfix_svc_stock
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_stock:5432/techfix_stock
+      SPRING_DATASOURCE_USERNAME: techfix_stock
+      SPRING_DATASOURCE_PASSWORD: StockS3cur3Pass!
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SERVER_PORT: 8082
+    depends_on:
+      postgres_stock:
+        condition: service_healthy
+  svc_agenda:
+    build:
+      context: ./microservicios/agenda
+      dockerfile: Dockerfile
+    container_name: techfix_svc_agenda
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_agenda:5432/techfix_agenda
+      SPRING_DATASOURCE_USERNAME: techfix_agenda
+      SPRING_DATASOURCE_PASSWORD: AgendaS3cur3Pass!
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SERVER_PORT: 8083
+    depends_on:
+      postgres_agenda:
+        condition: service_healthy
+  svc_gateway:
+    build:
+      context: ./microservicios/gateway
+      dockerfile: Dockerfile
+    container_name: techfix_svc_gateway
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    ports:
+      - "8090:8090"
+    environment:
+      SERVER_PORT: 8090
+      ROLES_SERVICE_URL: http://svc_roles:8080
+      PAGOS_SERVICE_URL: http://svc_pagos:8081
+      STOCK_SERVICE_URL: http://svc_stock:8082
+      AGENDA_SERVICE_URL: http://svc_agenda:8083
+    depends_on:
+      - svc_roles
+      - svc_pagos
+      - svc_stock
+      - svc_agenda
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: techfix_frontend
+    restart: unless-stopped
+    networks:
+      - techfix_net
+    ports:
+      - "3000:3000"
+    depends_on:
+      - svc_gateway

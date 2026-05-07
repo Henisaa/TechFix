@@ -1,0 +1,67 @@
+========================================================
+  PostgreSQL - Contenedor Compartido (postgres-shared)
+  Instalado: 2026-04-30
+========================================================
+
+CREDENCIALES DE ACCESO
+----------------------
+  Host        : localhost
+  Puerto      : 5432
+  Usuario     : techfix_admin
+  Contraseña  : TechFix2024!
+  DB default  : postgres
+  Imagen      : postgres:16-alpine
+
+BASES DE DATOS
+--------------
+  - postgres          (base de datos por defecto)
+  - techfix_payment   (microservicio de pagos)
+
+STRING DE CONEXIÓN (JDBC)
+--------------------------
+  jdbc:postgresql://localhost:5432/techfix_payment
+  Usuario   : techfix_admin
+  Contraseña: TechFix2024!
+
+========================================================
+  COMANDOS ÚTILES
+========================================================
+
+INICIAR / DETENER CONTENEDOR
+  sudo docker start postgres-shared
+  sudo docker stop postgres-shared
+  sudo docker restart postgres-shared
+
+VER ESTADO
+  sudo docker ps
+  sudo docker logs postgres-shared
+
+CONECTARSE A PSQL INTERACTIVAMENTE
+  sudo docker exec -it postgres-shared psql -U techfix_admin -d postgres
+
+CREAR UNA NUEVA BASE DE DATOS (para otro microservicio)
+  sudo docker exec postgres-shared psql -U techfix_admin -d postgres -c "CREATE DATABASE nombre_db;"
+
+LISTAR BASES DE DATOS
+  sudo docker exec postgres-shared psql -U techfix_admin -d postgres -c "\l"
+
+ELIMINAR UNA BASE DE DATOS
+  sudo docker exec postgres-shared psql -U techfix_admin -d postgres -c "DROP DATABASE nombre_db;"
+
+========================================================
+  NOTAS
+========================================================
+
+- El contenedor tiene --restart unless-stopped, por lo que
+  se inicia automáticamente al arrancar el sistema.
+
+- Los datos persisten en el volumen Docker: postgres_data
+  (no se pierden aunque el contenedor se elimine)
+
+- Para conectarte desde otro microservicio en Docker Compose:
+    DB_HOST: host.docker.internal
+    DB_PORT: 5432
+    DB_USER: techfix_admin
+    DB_PASSWORD: TechFix2024!
+
+========================================================

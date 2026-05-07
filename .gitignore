@@ -1,0 +1,18 @@
+# Java
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+*.log
