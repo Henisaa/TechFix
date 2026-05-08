@@ -1,56 +1,45 @@
 const formatPrice = (price) => {
-  if (!price && price !== 0) return '$0';
-  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' })
-    .format(price)
-    .replace('CLP', '')
-    .trim();
+  return new Intl.NumberFormat('es-CL', {
+    style: 'currency',
+    currency: 'CLP',
+  }).format(price);
 };
 
 const ProductCard = ({ product }) => {
-  const {
-    cod_repuesto,
-    nombre_repuesto,
-    categoria,
-    descripcion,
-    precio_clp,
-    stock,
-    image,
-  } = product;
-
-  const stockBadge =
-    stock === 0
-      ? { label: 'Sin stock', cls: 'bg-red-100 text-red-700' }
-      : stock <= 3
-      ? { label: `${stock} uds. — Bajo`, cls: 'bg-yellow-100 text-yellow-700' }
-      : { label: `${stock} en stock`, cls: 'bg-green-100 text-green-700' };
-
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow group">
-      <div className="relative overflow-hidden h-48 bg-slate-100">
+    <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 group">
+      <div className="aspect-w-16 aspect-h-10 w-full overflow-hidden bg-slate-100">
         <img
-          src={image}
-          alt={nombre_repuesto}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={(e) => {
-            e.target.src = `https://placehold.co/300x200/1e40af/ffffff?text=${encodeURIComponent(nombre_repuesto?.slice(0, 15) || 'Repuesto')}`;
-          }}
+          src={product.image}
+          alt={product.nombre_repuesto}
+          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
         />
-        <div className="absolute top-3 left-3">
-          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${stockBadge.cls}`}>
-            {stockBadge.label}
+      </div>
+      <div className="p-6">
+        <div className="flex justify-between items-start mb-2">
+          <span className="text-xs font-semibold tracking-wider text-accent uppercase">
+            {product.categoria}
+          </span>
+          <span className={`text-xs font-medium px-2 py-1 rounded-full ${product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+            {product.stock > 0 ? 'Disponible' : 'Agotado'}
           </span>
         </div>
-      </div>
-      <div className="p-5">
-        <div className="text-xs text-slate-400 font-mono mb-1">{cod_repuesto}</div>
-        <h3 className="font-bold text-slate-900 text-base mb-1 leading-tight">{nombre_repuesto}</h3>
-        <p className="text-xs text-primary font-medium mb-2">{categoria}</p>
-        {descripcion && (
-          <p className="text-xs text-slate-500 line-clamp-2 mb-3">{descripcion}</p>
-        )}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-          <span className="text-xl font-extrabold text-slate-900">${formatPrice(precio_clp)}</span>
-          <span className="text-xs text-slate-400">CLP</span>
+        <h3 className="text-xl font-bold text-slate-800 mb-2 line-clamp-2">
+          {product.nombre_repuesto}
+        </h3>
+        <p className="text-slate-500 text-sm mb-4 line-clamp-3">
+          {product.descripcion}
+        </p>
+        <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-100">
+          <span className="text-2xl font-bold text-slate-900">
+            {formatPrice(product.precio_clp)}
+          </span>
+          <button className="bg-primary hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            Ver detalle
+          </button>
+        </div>
+        <div className="mt-3 text-xs text-slate-400 font-mono">
+          Cód: {product.cod_repuesto}
         </div>
       </div>
     </div>

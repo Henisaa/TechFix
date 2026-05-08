@@ -9,56 +9,88 @@ export const useUsuarios = () => {
   const fetchUsuarios = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await userApi.get('');
-      setUsuarios(res.data || []);
-    } catch {
-      setUsuarios([]);
+      const response = await userApi.get('');
+      setUsuarios(response.data);
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const createUsuario = async (data) => {
+  const fetchByRole = async (role) => {
     setLoading(true);
     try {
-      const res = await userApi.post('/register', data);
-      toast.success('Usuario creado');
-      await fetchUsuarios();
-      return res.data;
-    } catch {
-      return null;
+      const response = await userApi.get(`/role/${role}`);
+      setUsuarios(response.data);
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const updateUsuario = async (id, data) => {
-    setLoading(true);
+  const createUsuario = async (userData) => {
     try {
-      const res = await userApi.put(`/${id}`, data);
-      toast.success('Usuario actualizado');
-      await fetchUsuarios();
-      return res.data;
-    } catch {
-      return null;
-    } finally {
-      setLoading(false);
+      await userApi.post('', userData);
+      toast.success('Usuario creado exitosamente');
+      fetchUsuarios();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const updateUsuario = async (id, userData) => {
+    try {
+      await userApi.put(`/${id}`, userData);
+      toast.success('Usuario actualizado exitosamente');
+      fetchUsuarios();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const toggleStatus = async (id) => {
+    try {
+      await userApi.patch(`/${id}/toggle-status`);
+      toast.success('Estado actualizado');
+      fetchUsuarios();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const assignRole = async (id, role) => {
+    try {
+      await userApi.patch(`/${id}/assign-role?role=${role}`);
+      toast.success('Rol actualizado');
+      fetchUsuarios();
+    } catch (error) {
+      console.error(error);
     }
   };
 
   const deleteUsuario = async (id) => {
-    setLoading(true);
     try {
       await userApi.delete(`/${id}`);
       toast.success('Usuario eliminado');
-      await fetchUsuarios();
-      return true;
-    } catch {
-      return false;
-    } finally {
-      setLoading(false);
+      fetchUsuarios();
+    } catch (error) {
+      console.error(error);
     }
   };
 
-  return { usuarios, loading, fetchUsuarios, createUsuario, updateUsuario, deleteUsuario };
+  return {
+    usuarios,
+    loading,
+    fetchUsuarios,
+    fetchByRole,
+    createUsuario,
+    updateUsuario,
+    toggleStatus,
+    assignRole,
+    deleteUsuario
+  };
 };

@@ -10,19 +10,5 @@ export default defineConfig({
     hmr: {
       clientPort: 443,
     },
-    
-    proxy: {
-      "/gateway": {
-        target: "http://localhost:8090",
-        changeOrigin: true,
-        rewrite: (path) => path,
-      },
-    },
-  },
-  define: {
-    
-    "import.meta.env.VITE_GATEWAY_URL": JSON.stringify(
-      process.env.VITE_GATEWAY_URL || "http://localhost:8090"
-    ),
   },
 });

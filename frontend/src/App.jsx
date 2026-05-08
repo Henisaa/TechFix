@@ -1,60 +1,87 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import Navbar from './components/Navbar';
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Admin from './pages/Admin';
-import Agendamiento from './pages/Agendamiento';
-import Catalogo from './pages/Catalogo';
-import Inventario from './pages/Inventario';
-import Ordenes from './pages/Ordenes';
-import Pagos from './pages/Pagos';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import Navbar from "./components/layout/Navbar";
+import Footer from "./components/layout/Footer";
+import ProtectedRoute from "./components/ProtectedRoute";
 
-const ProtectedRoute = ({ children, roles }) => {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
-  if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
-  return children;
-};
+import Home from "./pages/Home";
+import Catalogo from "./pages/Catalogo";
+import Agendamiento from "./pages/Agendamiento";
+import Ordenes from "./pages/Ordenes";
+import Inventario from "./pages/Inventario";
+import Pagos from "./pages/Pagos";
+import Usuarios from "./pages/Usuarios";
+import Login from "./pages/Login";
+import Admin from "./pages/Admin";
 
-const AppRoutes = () => {
-  const { user } = useAuth();
+function App() {
   return (
-    <>
-      <Navbar />
-      <main>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-          <Route path="/catalogo" element={<Catalogo />} />
-          <Route path="/agendamiento" element={
-            <ProtectedRoute><Agendamiento /></ProtectedRoute>
-          } />
-          <Route path="/ordenes" element={
-            <ProtectedRoute><Ordenes /></ProtectedRoute>
-          } />
-          <Route path="/pagos" element={
-            <ProtectedRoute roles={['ADMIN', 'TECNICO']}><Pagos /></ProtectedRoute>
-          } />
-          <Route path="/inventario" element={
-            <ProtectedRoute roles={['ADMIN', 'TECNICO']}><Inventario /></ProtectedRoute>
-          } />
-          <Route path="/admin" element={
-            <ProtectedRoute roles={['ADMIN']}><Admin /></ProtectedRoute>
-          } />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-    </>
-  );
-};
+    <Router>
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <main className="flex-grow">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/catalogo" element={<Catalogo />} />
+            <Route path="/login" element={<Login />} />
 
-const App = () => (
-  <BrowserRouter>
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
-  </BrowserRouter>
-);
+            <Route
+              path="/agendamiento"
+              element={
+                <ProtectedRoute>
+                  <Agendamiento />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ordenes"
+              element={
+                <ProtectedRoute>
+                  <Ordenes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pagos"
+              element={
+                <ProtectedRoute>
+                  <Pagos />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/inventario"
+              element={
+                <ProtectedRoute allowedRoles={["TECNICO", "ADMIN"]}>
+                  <Inventario />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/usuarios"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <Usuarios />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute allowedRoles={["ADMIN"]}>
+                  <Admin />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </main>
+        <Footer />
+        <Toaster position="bottom-right" />
+      </div>
+    </Router>
+  );
+}
 
 export default App;

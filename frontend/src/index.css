@@ -5,6 +5,11 @@
 @layer base {
   body {
     @apply bg-background text-slate-800 antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
   }
+}
+
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }

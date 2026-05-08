@@ -11,50 +11,50 @@ spring:
             allowedHeaders: "*"
       routes:
         - id: users-login
-          uri: ${ROLES_SERVICE_URL:http://svc_roles:8080}
+          uri: http://svc_roles:8080
           predicates:
             - Path=/gateway/users/username/**
           filters:
             - RewritePath=/gateway/users/(?<seg>.*), /api/v1/users/${seg}
         - id: users-register
-          uri: ${ROLES_SERVICE_URL:http://svc_roles:8080}
+          uri: http://svc_roles:8080
           predicates:
             - Path=/gateway/users
             - Method=POST
           filters:
             - RewritePath=/gateway/users, /api/v1/users
         - id: users-protected
-          uri: ${ROLES_SERVICE_URL:http://svc_roles:8080}
+          uri: http://svc_roles:8080
           predicates:
             - Path=/gateway/users/**
           filters:
             - RewritePath=/gateway/users(?<seg>/?.*), /api/v1/users${seg}
         - id: pagos
-          uri: ${PAGOS_SERVICE_URL:http://svc_pagos:8081}
+          uri: http://svc_pagos:8081
           predicates:
             - Path=/gateway/pagos/**
           filters:
             - RewritePath=/gateway/pagos(?<seg>/?.*), /pago${seg}
         - id: stock
-          uri: ${STOCK_SERVICE_URL:http://svc_stock:8082}
+          uri: http://svc_stock:8082
           predicates:
             - Path=/gateway/stock/**
           filters:
             - RewritePath=/gateway/stock(?<seg>/?.*), /api/v1/products${seg}
         - id: citas
-          uri: ${AGENDA_SERVICE_URL:http://svc_agenda:8083}
+          uri: http://svc_agenda:8083
           predicates:
             - Path=/gateway/citas/**
           filters:
             - RewritePath=/gateway/citas(?<seg>/?.*), /api/v1/citas${seg}
         - id: clientes
-          uri: ${AGENDA_SERVICE_URL:http://svc_agenda:8083}
+          uri: http://svc_agenda:8083
           predicates:
             - Path=/gateway/clientes/**
           filters:
             - RewritePath=/gateway/clientes(?<seg>/?.*), /api/v1/clientes${seg}
         - id: tecnicos
-          uri: ${AGENDA_SERVICE_URL:http://svc_agenda:8083}
+          uri: http://svc_agenda:8083
           predicates:
             - Path=/gateway/tecnicos/**
           filters:
