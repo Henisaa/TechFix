@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 
 export const useInventario = () => {
   const [productos, setProductos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +32,15 @@ export const useInventario = () => {
     }
   }, []);
 
-  
+  const fetchCategorias = useCallback(async () => {
+    try {
+      const response = await inventoryApi.get('/categories');
+      setCategorias(response.data || []);
+    } catch {
+      setCategorias([]);
+    }
+  }, []);
+
   const createProducto = async (form) => {
     setLoading(true);
     try {
@@ -101,9 +110,11 @@ export const useInventario = () => {
 
   return {
     productos,
+    categorias,
     stats,
     loading,
     fetchProductos,
+    fetchCategorias,
     fetchStats,
     createProducto,
     updateProducto,
