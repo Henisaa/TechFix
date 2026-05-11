@@ -1,6 +1,9 @@
 import { useState, useCallback } from 'react';
+import axios from 'axios';
 import { inventoryApi } from '../services/api';
 import toast from 'react-hot-toast';
+
+const GATEWAY = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:8090';
 
 export const useInventario = () => {
   const [productos, setProductos] = useState([]);
@@ -34,7 +37,7 @@ export const useInventario = () => {
 
   const fetchCategorias = useCallback(async () => {
     try {
-      const response = await inventoryApi.get('/categories');
+      const response = await axios.get(`${GATEWAY}/gateway/categories`);
       setCategorias(response.data || []);
     } catch {
       setCategorias([]);

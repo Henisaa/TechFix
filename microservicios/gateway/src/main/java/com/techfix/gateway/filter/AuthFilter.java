@@ -109,15 +109,16 @@ public class AuthFilter implements GlobalFilter, Ordered {
     
 
     private boolean isPublicRoute(String path, String method) {
-        
+        if ("POST".equals(method) && "/gateway/users/login".equals(path)) return true;
+        if ("POST".equals(method) && "/gateway/users/register".equals(path)) return true;
         if (path.startsWith("/gateway/users/username/")) return true;
-        
+        // Crear usuario directo (POST /)
         if ("POST".equals(method) && "/gateway/users".equals(path)) return true;
-        
+        // Catálogo (lectura pública)
         if ("GET".equals(method) && path.startsWith("/gateway/stock")) return true;
-        
+        if ("GET".equals(method) && path.startsWith("/gateway/categories")) return true;
         if ("GET".equals(method) && path.startsWith("/gateway/tecnicos")) return true;
-        
+        // Actuator health
         if (path.startsWith("/actuator")) return true;
         return false;
     }

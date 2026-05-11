@@ -1,5 +1,6 @@
 package com.userrol.modification.controller;
 
+import com.userrol.modification.exception.ResourceNotFoundException;
 import com.userrol.modification.model.Role;
 import com.userrol.modification.model.User;
 import com.userrol.modification.service.UserService;
@@ -13,6 +14,7 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -21,6 +23,36 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+
+    @PostMapping("/login")
+    @Operation(summary = "Iniciar sesión", description = "Autentica con username y password (texto plano).")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Autenticado"),
+        @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")
+    })
+    public ResponseEntity<User> login(@RequestBody Map<String, String> credentials) {
+        String username = credentials.get("username");
+        String password = credentials.get("password");
+        try {
+            User user = userService.getUserByUsername(username);
+            if (!user.getPassword().equals(password)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            return ResponseEntity.ok(user);
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
+
+    @PostMapping("/register")
+    @Operation(summary = "Registrar usuario (alias)", description = "Alias de POST / para compatibilidad con el frontend.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Usuario creado"),
+        @ApiResponse(responseCode = "409", description = "Username o email ya existe")
+    })
+    public ResponseEntity<User> registerUser(@Valid @RequestBody User user) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(user));
+    }
 
     @PostMapping
     @Operation(summary = "Registrar usuario", description = "Crea una cuenta nueva.")
