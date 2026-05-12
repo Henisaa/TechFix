@@ -2,7 +2,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 
 
-const GATEWAY = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8090";
+const GATEWAY = import.meta.env.VITE_GATEWAY_URL || "";
 
 
 

@@ -1,4 +1,3 @@
-
 networks:
   techfix_net:
     driver: bridge
@@ -8,7 +7,7 @@ volumes:
   postgres_stock_data:
   postgres_agenda_data:
 services:
-  postgres_usuarios:
+  postgres-usuarios:
     image: postgres:16-alpine
     container_name: techfix_postgres_usuarios
     restart: unless-stopped
@@ -21,12 +20,12 @@ services:
     volumes:
       - postgres_usuarios_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U techfix_usr -d techfix_usuarios"]
+      test: [ "CMD-SHELL", "pg_isready -U techfix_usr -d techfix_usuarios" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
-  postgres_pagos:
+  postgres-pagos:
     image: postgres:16-alpine
     container_name: techfix_postgres_pagos
     restart: unless-stopped
@@ -39,12 +38,12 @@ services:
     volumes:
       - postgres_pagos_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U techfix_pay -d techfix_payment"]
+      test: [ "CMD-SHELL", "pg_isready -U techfix_pay -d techfix_payment" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
-  postgres_stock:
+  postgres-stock:
     image: postgres:16-alpine
     container_name: techfix_postgres_stock
     restart: unless-stopped
@@ -57,12 +56,12 @@ services:
     volumes:
       - postgres_stock_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U techfix_stock -d techfix_stock"]
+      test: [ "CMD-SHELL", "pg_isready -U techfix_stock -d techfix_stock" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
-  postgres_agenda:
+  postgres-agenda:
     image: postgres:16-alpine
     container_name: techfix_postgres_agenda
     restart: unless-stopped
@@ -75,15 +74,16 @@ services:
     volumes:
       - postgres_agenda_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U techfix_agenda -d techfix_agenda"]
+      test: [ "CMD-SHELL", "pg_isready -U techfix_agenda -d techfix_agenda" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
-  svc_roles:
+  svc-roles:
     build:
       context: ./microservicios/roles
       dockerfile: Dockerfile
+      network: host
     container_name: techfix_svc_roles
     restart: unless-stopped
     networks:
@@ -91,19 +91,26 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DB_HOST: postgres_usuarios
+      DB_HOST: postgres-usuarios
       DB_PORT: 5432
       DB_NAME: techfix_usuarios
       DB_USER: techfix_usr
       DB_PASSWORD: UsrS3cur3Pass!
       SERVER_PORT: 8080
     depends_on:
-      postgres_usuarios:
+      postgres-usuarios:
         condition: service_healthy
-  svc_pagos:
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+  svc-pagos:
     build:
       context: ./microservicios/pagos
       dockerfile: Dockerfile
+      network: host
     container_name: techfix_svc_pagos
     restart: unless-stopped
     networks:
@@ -111,19 +118,26 @@ services:
     ports:
       - "8081:8081"
     environment:
-      DB_HOST: postgres_pagos
+      DB_HOST: postgres-pagos
       DB_PORT: 5432
       DB_NAME: techfix_payment
       DB_USER: techfix_pay
       DB_PASSWORD: PayS3cur3Pass!
       SERVER_PORT: 8081
     depends_on:
-      postgres_pagos:
+      postgres-pagos:
         condition: service_healthy
-  svc_stock:
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+  svc-stock:
     build:
       context: ./microservicios/stock
       dockerfile: Dockerfile
+      network: host
     container_name: techfix_svc_stock
     restart: unless-stopped
     networks:
@@ -131,18 +145,25 @@ services:
     ports:
       - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_stock:5432/techfix_stock
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-stock:5432/techfix_stock
       SPRING_DATASOURCE_USERNAME: techfix_stock
       SPRING_DATASOURCE_PASSWORD: StockS3cur3Pass!
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SERVER_PORT: 8082
     depends_on:
-      postgres_stock:
+      postgres-stock:
         condition: service_healthy
-  svc_agenda:
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+  svc-agenda:
     build:
       context: ./microservicios/agenda
       dockerfile: Dockerfile
+      network: host
     container_name: techfix_svc_agenda
     restart: unless-stopped
     networks:
@@ -150,18 +171,25 @@ services:
     ports:
       - "8083:8083"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_agenda:5432/techfix_agenda
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-agenda:5432/techfix_agenda
       SPRING_DATASOURCE_USERNAME: techfix_agenda
       SPRING_DATASOURCE_PASSWORD: AgendaS3cur3Pass!
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SERVER_PORT: 8083
     depends_on:
-      postgres_agenda:
+      postgres-agenda:
         condition: service_healthy
-  svc_gateway:
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+  svc-gateway:
     build:
       context: ./microservicios/gateway
       dockerfile: Dockerfile
+      network: host
     container_name: techfix_svc_gateway
     restart: unless-stopped
     networks:
@@ -170,17 +198,18 @@ services:
       - "8090:8090"
     environment:
       SERVER_PORT: 8090
-      ROLES_SERVICE_URL: http://svc_roles:8080
-      PAGOS_SERVICE_URL: http://svc_pagos:8081
-      STOCK_SERVICE_URL: http://svc_stock:8082
-      AGENDA_SERVICE_URL: http://svc_agenda:8083
+      ROLES_SERVICE_URL: http://svc-roles:8080
     depends_on:
-      - svc_roles
-      - svc_pagos
-      - svc_stock
-      - svc_agenda
+      svc-roles:
+        condition: service_healthy
+      svc-pagos:
+        condition: service_healthy
+      svc-stock:
+        condition: service_healthy
+      svc-agenda:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/actuator/health || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8090/actuator/health || exit 1" ]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -189,6 +218,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      network: host
     container_name: techfix_frontend
     restart: unless-stopped
     networks:
@@ -196,4 +226,5 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - svc_gateway
+      svc-gateway:
+        condition: service_healthy

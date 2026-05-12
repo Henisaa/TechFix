@@ -21,7 +21,7 @@ const Login = () => {
     setLoading(true);
     try {
       const user = await login(username, password);
-      toast.success(`Bienvenido, ${user.fullName}`);
+      if (!user) return;
 
       if (user.role === 'ADMIN') {
         navigate('/usuarios');

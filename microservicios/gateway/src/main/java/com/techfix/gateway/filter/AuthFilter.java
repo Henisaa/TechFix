@@ -4,7 +4,6 @@ import com.techfix.gateway.dto.UserDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -19,14 +18,13 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
-
 @Component
 @Slf4j
 public class AuthFilter implements GlobalFilter, Ordered {
 
     private final WebClient webClient;
 
-    @Value("${ROLES_SERVICE_URL:http://svc_roles:8080}")
+    @Value("${ROLES_SERVICE_URL:http://svc-roles:8080}")
     private String rolesServiceUrl;
 
     public AuthFilter(WebClient.Builder webClientBuilder) {
@@ -35,29 +33,26 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        return -100; 
+        return -100;
     }
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String path   = exchange.getRequest().getPath().value();
+        String path = exchange.getRequest().getPath().value();
         String method = exchange.getRequest().getMethod().name();
 
         log.debug("Gateway request: {} {}", method, path);
 
-        
         if (isPublicRoute(path, method)) {
             return chain.filter(exchange);
         }
 
-        
         String userId = exchange.getRequest().getHeaders().getFirst("X-User-Id");
         if (userId == null || userId.isBlank()) {
             return respondError(exchange, HttpStatus.UNAUTHORIZED,
                     "{\"error\":\"Authentication required\",\"message\":\"Missing X-User-Id header\"}");
         }
 
-        
         return webClient.get()
                 .uri(rolesServiceUrl + "/api/v1/users/" + userId)
                 .retrieve()
@@ -70,7 +65,6 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
                     String role = user.getRole() != null ? user.getRole() : "USER";
 
-                    
                     if (requiresAdmin(path, method) && !"ADMIN".equals(role)) {
                         return respondError(exchange, HttpStatus.FORBIDDEN,
                                 "{\"error\":\"Forbidden\",\"message\":\"Admin access required\"}");
@@ -81,7 +75,6 @@ public class AuthFilter implements GlobalFilter, Ordered {
                                 "{\"error\":\"Forbidden\",\"message\":\"Staff access required (ADMIN or TECNICO)\"}");
                     }
 
-                    
                     ServerHttpRequest mutated = exchange.getRequest().mutate()
                             .header("X-User-Role", role)
                             .header("X-User-Username", user.getUsername())
@@ -106,48 +99,45 @@ public class AuthFilter implements GlobalFilter, Ordered {
                 });
     }
 
-    
-
     private boolean isPublicRoute(String path, String method) {
-        if ("POST".equals(method) && "/gateway/users/login".equals(path)) return true;
-        if ("POST".equals(method) && "/gateway/users/register".equals(path)) return true;
-        if (path.startsWith("/gateway/users/username/")) return true;
-        // Crear usuario directo (POST /)
-        if ("POST".equals(method) && "/gateway/users".equals(path)) return true;
-        // Catálogo (lectura pública)
-        if ("GET".equals(method) && path.startsWith("/gateway/stock")) return true;
-        if ("GET".equals(method) && path.startsWith("/gateway/categories")) return true;
-        if ("GET".equals(method) && path.startsWith("/gateway/tecnicos")) return true;
-        // Actuator health
-        if (path.startsWith("/actuator")) return true;
+        if ("POST".equals(method) && "/gateway/users/login".equals(path))
+            return true;
+        if ("POST".equals(method) && "/gateway/users/register".equals(path))
+            return true;
+        if (path.startsWith("/gateway/users/username/"))
+            return true;
+        if ("POST".equals(method) && "/gateway/users".equals(path))
+            return true;
+        if ("GET".equals(method) && path.startsWith("/gateway/stock"))
+            return true;
+        if ("GET".equals(method) && path.startsWith("/gateway/categories"))
+            return true;
+        if ("GET".equals(method) && path.startsWith("/gateway/tecnicos"))
+            return true;
+        if (path.startsWith("/actuator"))
+            return true;
         return false;
     }
-
-    
 
     private boolean requiresAdmin(String path, String method) {
-        
         if (path.startsWith("/gateway/users") && !path.contains("/username/")
-                && List.of("GET", "DELETE", "PATCH", "PUT").contains(method)) return true;
-        
-        if (path.startsWith("/gateway/pagos")) return true;
-        
+                && List.of("GET", "DELETE", "PATCH", "PUT").contains(method))
+            return true;
+        if (path.startsWith("/gateway/pagos"))
+            return true;
         if (path.startsWith("/gateway/stock")
-                && List.of("POST", "PUT", "DELETE", "PATCH").contains(method)) return true;
+                && List.of("POST", "PUT", "DELETE", "PATCH").contains(method))
+            return true;
         return false;
     }
-
-    
 
     private boolean requiresStaff(String path, String method) {
-        
-        if (path.startsWith("/gateway/citas") && "PATCH".equals(method)) return true;
-        
-        if (path.startsWith("/gateway/citas") && "DELETE".equals(method)) return true;
+        if (path.startsWith("/gateway/citas") && "PATCH".equals(method))
+            return true;
+        if (path.startsWith("/gateway/citas") && "DELETE".equals(method))
+            return true;
         return false;
     }
-
-    
 
     private Mono<Void> respondError(ServerWebExchange exchange, HttpStatus status, String body) {
         ServerHttpResponse response = exchange.getResponse();
