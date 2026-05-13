@@ -17,7 +17,7 @@ const Usuarios = () => {
     email: '',
     password: '',
     fullName: '',
-    role: 'USER'
+    role: 'CLIENTE'
   });
 
   useEffect(() => {
@@ -29,7 +29,7 @@ const Usuarios = () => {
     const success = await createUsuario(formData);
     if (success) {
       setIsModalOpen(false);
-      setFormData({ username: '', email: '', password: '', fullName: '', role: 'USER' });
+      setFormData({ username: '', email: '', password: '', fullName: '', role: 'CLIENTE' });
     }
   };
 
@@ -74,7 +74,7 @@ const Usuarios = () => {
               <option value="ALL">Todos</option>
               <option value="ADMIN">Administradores</option>
               <option value="TECNICO">Técnicos</option>
-              <option value="USER">Usuarios (Clientes)</option>
+              <option value="CLIENTE">Clientes</option>
             </select>
           </div>
           <button onClick={fetchUsuarios} className="text-slate-500 hover:text-primary transition-colors" title="Actualizar lista">
@@ -117,7 +117,7 @@ const Usuarios = () => {
                       onChange={(e) => handleRoleChange(u.id, e.target.value)}
                       disabled={u.id === currentUser.id && u.role === 'ADMIN'}
                     >
-                      <option value="USER">USER</option>
+                      <option value="CLIENTE">CLIENTE</option>
                       <option value="TECNICO">TECNICO</option>
                       <option value="ADMIN">ADMIN</option>
                     </select>
@@ -225,7 +225,7 @@ const Usuarios = () => {
                       value={formData.role}
                       onChange={(e) => setFormData({...formData, role: e.target.value})}
                     >
-                      <option value="USER">Usuario (Cliente)</option>
+                      <option value="CLIENTE">Usuario (Cliente)</option>
                       <option value="TECNICO">Técnico</option>
                       <option value="ADMIN">Administrador</option>
                     </select>

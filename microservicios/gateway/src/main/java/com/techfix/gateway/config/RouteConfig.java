@@ -51,6 +51,9 @@ public class RouteConfig {
                                                 .filters(f -> f.rewritePath("/gateway/clientes(?<seg>/?.*)",
                                                                 "/api/v1/clientes${seg}"))
                                                 .uri(AGENDA))
+                                .route("tecnicos-exact", r -> r.path("/gateway/tecnicos").and().method("GET")
+                                                .filters(f -> f.rewritePath("/gateway/tecnicos", "/api/v1/tecnicos"))
+                                                .uri(AGENDA))
                                 .route("tecnicos", r -> r.path("/gateway/tecnicos/**")
                                                 .filters(f -> f.rewritePath("/gateway/tecnicos(?<seg>/?.*)",
                                                                 "/api/v1/tecnicos${seg}"))

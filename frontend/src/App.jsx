@@ -12,6 +12,7 @@ import Inventario from "./pages/Inventario";
 import Pagos from "./pages/Pagos";
 import Usuarios from "./pages/Usuarios";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Admin from "./pages/Admin";
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/catalogo" element={<Catalogo />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
             <Route
               path="/agendamiento"

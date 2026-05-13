@@ -46,7 +46,7 @@ export const useAgendamiento = () => {
 
   const fetchTecnicos = useCallback(async () => {
     try {
-      const res = await tecnicosApi.get('');
+      const res = await tecnicosApi.get('/activos');
       setTecnicos(res.data || []);
     } catch {
       setTecnicos([]);

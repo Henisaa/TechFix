@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiLock, FiUser, FiTool } from 'react-icons/fi';
 import toast from 'react-hot-toast';
@@ -98,6 +98,13 @@ const Login = () => {
             >
               {loading ? 'Ingresando...' : 'Iniciar Sesión'}
             </button>
+          </div>
+
+          <div className="text-center text-sm text-slate-600">
+            ¿No tienes cuenta?{' '}
+            <Link to="/register" className="font-medium text-primary hover:text-blue-700 transition-colors">
+              Regístrate aquí
+            </Link>
           </div>
         </form>
       </div>

@@ -30,6 +30,24 @@ public class UserServiceImpl implements UserService {
         if (userRepository.existsByEmail(user.getEmail()))
             throw new ConflictException("Email already registered: " + user.getEmail());
 
+        if (user.getRole() == null) {
+            user.setRole(Role.CLIENTE);
+        }
+        user.setActive(true);
+
+        return userRepository.save(user);
+    }
+
+    @Override
+    public User registerUser(User user) {
+        log.info("Self-registering user: {}", user.getUsername());
+
+        if (userRepository.existsByUsername(user.getUsername()))
+            throw new ConflictException("Username already exists: " + user.getUsername());
+
+        if (userRepository.existsByEmail(user.getEmail()))
+            throw new ConflictException("Email already registered: " + user.getEmail());
+
         user.setRole(Role.CLIENTE);
         user.setActive(true);
 

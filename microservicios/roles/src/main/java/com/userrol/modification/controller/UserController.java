@@ -27,8 +27,8 @@ public class UserController {
     @PostMapping("/login")
     @Operation(summary = "Iniciar sesión", description = "Autentica con username y password (texto plano).")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Autenticado"),
-        @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")
+            @ApiResponse(responseCode = "200", description = "Autenticado"),
+            @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")
     })
     public ResponseEntity<User> login(@RequestBody Map<String, String> credentials) {
         String username = credentials.get("username");
@@ -47,19 +47,19 @@ public class UserController {
     @PostMapping("/register")
     @Operation(summary = "Registrar usuario (alias)", description = "Alias de POST / para compatibilidad con el frontend.")
     @ApiResponses({
-        @ApiResponse(responseCode = "201", description = "Usuario creado"),
-        @ApiResponse(responseCode = "409", description = "Username o email ya existe")
+            @ApiResponse(responseCode = "201", description = "Usuario creado"),
+            @ApiResponse(responseCode = "409", description = "Username o email ya existe")
     })
     public ResponseEntity<User> registerUser(@Valid @RequestBody User user) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(user));
+        return ResponseEntity.status(HttpStatus.CREATED).body(userService.registerUser(user));
     }
 
     @PostMapping
     @Operation(summary = "Registrar usuario", description = "Crea una cuenta nueva.")
     @ApiResponses({
-        @ApiResponse(responseCode = "201", description = "Usuario creado"),
-        @ApiResponse(responseCode = "400", description = "Datos inválidos"),
-        @ApiResponse(responseCode = "409", description = "Username o email ya existe")
+            @ApiResponse(responseCode = "201", description = "Usuario creado"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+            @ApiResponse(responseCode = "409", description = "Username o email ya existe")
     })
     public ResponseEntity<User> createUser(@Valid @RequestBody User user) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(user));
@@ -104,8 +104,8 @@ public class UserController {
     @PatchMapping("/{id}/assign-role")
     @Operation(summary = "Asignar rol manualmente", description = "Permite asignar el rol técnico o admin.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Rol asignado"),
-        @ApiResponse(responseCode = "409", description = "Ya existe un ADMIN en el sistema")
+            @ApiResponse(responseCode = "200", description = "Rol asignado"),
+            @ApiResponse(responseCode = "409", description = "Ya existe un ADMIN en el sistema")
     })
     public ResponseEntity<User> assignRole(
             @PathVariable Long id,
@@ -122,8 +122,8 @@ public class UserController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Eliminar usuario", description = "El ADMIN no puede ser eliminado.")
     @ApiResponses({
-        @ApiResponse(responseCode = "204", description = "Eliminado"),
-        @ApiResponse(responseCode = "409", description = "No se puede eliminar al ADMIN")
+            @ApiResponse(responseCode = "204", description = "Eliminado"),
+            @ApiResponse(responseCode = "409", description = "No se puede eliminar al ADMIN")
     })
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
