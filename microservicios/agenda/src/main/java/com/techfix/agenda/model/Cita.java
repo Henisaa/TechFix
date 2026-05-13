@@ -43,9 +43,8 @@ public class Cita {
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "tecnico_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tecnico_id")
     private Tecnico tecnico;
 
     @CreationTimestamp

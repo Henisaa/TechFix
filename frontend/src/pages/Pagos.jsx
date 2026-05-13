@@ -115,11 +115,6 @@ const Pagos = () => {
         </h1>
         <p className="text-slate-600 mt-2">Gestiona los pagos de visitas técnicas y reparaciones</p>
 
-        {}
-        <div className="mt-4 inline-flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-xs font-medium px-3 py-1.5 rounded-full">
-          <FiShield className="text-green-600" />
-          Protección anti-cobro doble activa (Idempotency-Key)
-        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">

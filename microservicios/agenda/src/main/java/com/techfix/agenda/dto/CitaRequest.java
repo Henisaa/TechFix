@@ -20,6 +20,5 @@ public class CitaRequest {
     @NotNull(message = "El cliente es obligatorio")
     private Long clienteId;
 
-    @NotNull(message = "El técnico es obligatorio")
     private Long tecnicoId;
 }

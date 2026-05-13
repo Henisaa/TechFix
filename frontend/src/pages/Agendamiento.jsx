@@ -61,10 +61,6 @@ const Agendamiento = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.tecnicoId) {
-      alert('Por favor selecciona un técnico');
-      return;
-    }
     const fechaHora = `${formData.fecha}T${formData.hora}:00`;
     const result = await crearCita({
       nombre: formData.nombre || user.fullName || user.username,
@@ -74,7 +70,7 @@ const Agendamiento = () => {
       tipoServicio: formData.tipoServicio,
       descripcion: formData.descripcion,
       fechaHora,
-      tecnicoId: parseInt(formData.tecnicoId),
+      tecnicoId: formData.tecnicoId ? parseInt(formData.tecnicoId) : null,
     });
     if (result) {
       setFormData({
@@ -215,33 +211,25 @@ const Agendamiento = () => {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Técnico Asignado *
+                Técnico Asignado (Opcional)
               </label>
-              {tecnicos.length === 0 ? (
-                <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                  <FiTool className="inline mr-2" />
-                  No hay técnicos disponibles. El administrador debe registrar técnicos primero.
-                </div>
-              ) : (
-                <select
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-                  value={formData.tecnicoId}
-                  onChange={(e) => setFormData({ ...formData, tecnicoId: e.target.value })}
-                >
-                  <option value="">— Selecciona un técnico —</option>
-                  {tecnicos.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nombre} {t.apellido}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <select
+                className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={formData.tecnicoId}
+                onChange={(e) => setFormData({ ...formData, tecnicoId: e.target.value })}
+              >
+                <option value="">— Selecciona un técnico o deja que se asigne luego —</option>
+                {tecnicos.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nombre} {t.apellido}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <button
               type="submit"
-              disabled={loading || tecnicos.length === 0}
+              disabled={loading}
               className="w-full bg-primary hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-3 px-8 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
             >
               <FiCalendar /> {loading ? 'Agendando...' : 'Solicitar Visita'}

@@ -86,15 +86,17 @@ public class CitaServiceImpl implements CitaService {
         Cliente cliente = clienteRepository.findById(request.getClienteId())
                 .orElseThrow(() -> new ResourceNotFoundException("Cliente", request.getClienteId()));
 
-        Tecnico tecnico = tecnicoRepository.findById(request.getTecnicoId())
-                .orElseThrow(() -> new ResourceNotFoundException("Técnico", request.getTecnicoId()));
+        Tecnico tecnico = null;
+        if (request.getTecnicoId() != null) {
+            tecnico = tecnicoRepository.findById(request.getTecnicoId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Técnico", request.getTecnicoId()));
 
-        if (!tecnico.getActivo()) {
-            throw new BusinessException("El técnico con id " + tecnico.getId() + " no está activo.");
+            if (!tecnico.getActivo()) {
+                throw new BusinessException("El técnico con id " + tecnico.getId() + " no está activo.");
+            }
+
+            enforceMaxCitasPorDia(tecnico.getId(), request.getFechaHora());
         }
-
-        
-        enforceMaxCitasPorDia(tecnico.getId(), request.getFechaHora());
 
         Cita cita = Cita.builder()
                 .fechaHora(request.getFechaHora())
