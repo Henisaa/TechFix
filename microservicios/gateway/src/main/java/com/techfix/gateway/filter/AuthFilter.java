@@ -1,16 +1,15 @@
 package com.techfix.gateway.filter;
 
-import com.techfix.gateway.dto.UserDto;
+import com.techfix.gateway.jwt.JwtValidator;
+import io.jsonwebtoken.Claims;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -19,20 +18,11 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class AuthFilter implements GlobalFilter, Ordered {
 
-    private final WebClient webClient;
-
-    @Value("${ROLES_SERVICE_URL:http://svc-roles:8080}")
-    private String rolesServiceUrl;
-
-    @Value("${internal.api.secret:techfix-internal-secret-2024}")
-    private String internalApiSecret;
-
-    public AuthFilter(WebClient.Builder webClientBuilder) {
-        this.webClient = webClientBuilder.build();
-    }
+    private final JwtValidator jwtValidator;
 
     @Override
     public int getOrder() {
@@ -50,57 +40,43 @@ public class AuthFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        String userId = exchange.getRequest().getHeaders().getFirst("X-User-Id");
-        if (userId == null || userId.isBlank()) {
+        String authorization = exchange.getRequest().getHeaders().getFirst("Authorization");
+
+        if (authorization == null || authorization.isBlank() || !authorization.startsWith("Bearer ")) {
             return respondError(exchange, HttpStatus.UNAUTHORIZED,
-                    "{\"error\":\"Authentication required\",\"message\":\"Missing X-User-Id header\"}");
+                    "{\"error\":\"Authentication required\",\"message\":\"Missing or invalid Authorization header\"}");
         }
 
-        return webClient.get()
-                .uri(rolesServiceUrl + "/api/v1/users/" + userId)
-                .retrieve()
-                .bodyToMono(UserDto.class)
-                .flatMap(user -> {
-                    if (user == null || !Boolean.TRUE.equals(user.getActive())) {
-                        return respondError(exchange, HttpStatus.UNAUTHORIZED,
-                                "{\"error\":\"Unauthorized\",\"message\":\"User inactive or not found\"}");
-                    }
+        String token = authorization.substring(7);
 
-                    String role = user.getRole() != null ? user.getRole() : "USER";
+        if (!jwtValidator.isValid(token)) {
+            return respondError(exchange, HttpStatus.UNAUTHORIZED,
+                    "{\"error\":\"Unauthorized\",\"message\":\"Token inválido o expirado\"}");
+        }
 
-                    if (requiresAdmin(path, method) && !"ADMIN".equals(role)) {
-                        return respondError(exchange, HttpStatus.FORBIDDEN,
-                                "{\"error\":\"Forbidden\",\"message\":\"Admin access required\"}");
-                    }
+        Claims claims = jwtValidator.getClaims(token);
+        String userId   = claims.getSubject();
+        String role     = claims.get("role", String.class);
+        String username = claims.get("username", String.class);
 
-                    if (requiresStaff(path, method) && !"ADMIN".equals(role) && !"TECNICO".equals(role)) {
-                        return respondError(exchange, HttpStatus.FORBIDDEN,
-                                "{\"error\":\"Forbidden\",\"message\":\"Staff access required (ADMIN or TECNICO)\"}");
-                    }
+        if (requiresAdmin(path, method) && !"ADMIN".equals(role)) {
+            return respondError(exchange, HttpStatus.FORBIDDEN,
+                    "{\"error\":\"Forbidden\",\"message\":\"Admin access required\"}");
+        }
 
-                    ServerHttpRequest mutated = exchange.getRequest().mutate()
-                            .header("X-User-Role", role)
-                            .header("X-User-Username", user.getUsername())
-                            .header("X-Internal-Secret", internalApiSecret)
-                            .build();
+        if (requiresStaff(path, method) && !"ADMIN".equals(role) && !"TECNICO".equals(role)) {
+            return respondError(exchange, HttpStatus.FORBIDDEN,
+                    "{\"error\":\"Forbidden\",\"message\":\"Staff access required (ADMIN or TECNICO)\"}");
+        }
 
-                    log.debug("Auth OK → user={} role={} → {}", user.getUsername(), role, path);
-                    return chain.filter(exchange.mutate().request(mutated).build());
-                })
-                .onErrorResume(WebClientResponseException.class, e -> {
-                    log.warn("Roles service error for userId={}: {}", userId, e.getStatusCode());
-                    if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
-                        return respondError(exchange, HttpStatus.UNAUTHORIZED,
-                                "{\"error\":\"Unauthorized\",\"message\":\"User not found\"}");
-                    }
-                    return respondError(exchange, HttpStatus.SERVICE_UNAVAILABLE,
-                            "{\"error\":\"ServiceUnavailable\",\"message\":\"Auth service unavailable\"}");
-                })
-                .onErrorResume(Exception.class, e -> {
-                    log.error("Auth filter unexpected error: {}", e.getMessage());
-                    return respondError(exchange, HttpStatus.SERVICE_UNAVAILABLE,
-                            "{\"error\":\"ServiceUnavailable\",\"message\":\"Auth service unavailable\"}");
-                });
+        ServerHttpRequest mutated = exchange.getRequest().mutate()
+                .header("X-User-Id", userId)
+                .header("X-User-Role", role)
+                .header("X-User-Username", username)
+                .build();
+
+        log.debug("Auth OK → user={} role={} → {}", username, role, path);
+        return chain.filter(exchange.mutate().request(mutated).build());
     }
 
     private boolean isPublicRoute(String path, String method) {

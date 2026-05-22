@@ -97,6 +97,8 @@ services:
       DB_USER: techfix_usr
       DB_PASSWORD: UsrS3cur3Pass!
       SERVER_PORT: 8080
+      INTERNAL_API_SECRET: "techfix-internal-secret-2024"
+      JWT_SECRET: "cGFyYWJpZW5vZGViZXJpYXNlc3RhcmJhc2U2NHRlY2hmaXgK"
     depends_on:
       postgres-usuarios:
         condition: service_healthy
@@ -199,6 +201,8 @@ services:
     environment:
       SERVER_PORT: 8090
       ROLES_SERVICE_URL: http://svc-roles:8080
+      INTERNAL_API_SECRET: "techfix-internal-secret-2024"
+      JWT_SECRET: "cGFyYWJpZW5vZGViZXJpYXNlc3RhcmJhc2U2NHRlY2hmaXgK"
     depends_on:
       svc-roles:
         condition: service_healthy

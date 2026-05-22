@@ -1,7 +1,10 @@
 package com.userrol.modification.service;
 
+import com.userrol.modification.dto.LoginRequest;
+import com.userrol.modification.dto.LoginResponse;
 import com.userrol.modification.exception.ConflictException;
 import com.userrol.modification.exception.ResourceNotFoundException;
+import com.userrol.modification.jwt.JwtUtil;
 import com.userrol.modification.model.Role;
 import com.userrol.modification.model.User;
 import com.userrol.modification.repository.UserRepository;
@@ -21,6 +24,33 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+
+    @Override
+    @Transactional(readOnly = true)
+    public LoginResponse login(LoginRequest request) {
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new ResourceNotFoundException("Credenciales inválidas"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new ResourceNotFoundException("Credenciales inválidas");
+        }
+
+        if (!Boolean.TRUE.equals(user.getActive())) {
+            throw new ConflictException("La cuenta está inactiva");
+        }
+
+        String token = jwtUtil.generateToken(user);
+
+        return LoginResponse.builder()
+                .token(token)
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .role(user.getRole().name())
+                .build();
+    }
 
     @Override
     public User createUser(User user) {

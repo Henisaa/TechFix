@@ -1,6 +1,7 @@
 package com.userrol.modification.controller;
 
-import com.userrol.modification.exception.ResourceNotFoundException;
+import com.userrol.modification.dto.LoginRequest;
+import com.userrol.modification.dto.LoginResponse;
 import com.userrol.modification.model.Role;
 import com.userrol.modification.model.User;
 import com.userrol.modification.service.UserService;
@@ -11,11 +12,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -24,26 +23,15 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
-    private final BCryptPasswordEncoder passwordEncoder;
 
     @PostMapping("/login")
-    @Operation(summary = "Iniciar sesión", description = "Autentica con username y password.")
+    @Operation(summary = "Iniciar sesión", description = "Autentica con username y password. Devuelve un JWT.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Autenticado"),
-            @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")
+            @ApiResponse(responseCode = "200", description = "Autenticado — retorna JWT y datos de perfil"),
+            @ApiResponse(responseCode = "401", description = "Credenciales incorrectas o cuenta inactiva")
     })
-    public ResponseEntity<User> login(@RequestBody Map<String, String> credentials) {
-        String username = credentials.get("username");
-        String password = credentials.get("password");
-        try {
-            User user = userService.getUserByUsername(username);
-            if (!passwordEncoder.matches(password, user.getPassword())) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-            return ResponseEntity.ok(user);
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+        return ResponseEntity.ok(userService.login(request));
     }
 
     @PostMapping("/register")

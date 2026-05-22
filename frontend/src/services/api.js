@@ -32,17 +32,16 @@ export const tecnicosApi = axios.create({
 
 
 
-const injectUserId = (config) => {
+const injectToken = (config) => {
   try {
     const stored = localStorage.getItem("techfix_user");
     if (stored) {
-      const user = JSON.parse(stored);
-      if (user?.id) {
-        config.headers["X-User-Id"] = String(user.id);
+      const parsed = JSON.parse(stored);
+      if (parsed?.token) {
+        config.headers["Authorization"] = "Bearer " + parsed.token;
       }
     }
   } catch (_) {
-    
   }
   return config;
 };
@@ -57,6 +56,8 @@ const handleResponseError = (error) => {
 
     if (status === 401) {
       toast.error("Sesión expirada — inicia sesión nuevamente");
+      localStorage.removeItem("techfix_user");
+      window.location.href = "/login";
     } else if (status === 403) {
       toast.error(msg || "No tienes permisos para esta acción");
     } else if (status === 404) {
@@ -72,7 +73,7 @@ const handleResponseError = (error) => {
 
 
 const setupApi = (apiClient) => {
-  apiClient.interceptors.request.use(injectUserId);
+  apiClient.interceptors.request.use(injectToken);
   apiClient.interceptors.response.use((res) => res, handleResponseError);
 };
 
