@@ -27,6 +27,9 @@ public class AuthFilter implements GlobalFilter, Ordered {
     @Value("${ROLES_SERVICE_URL:http://svc-roles:8080}")
     private String rolesServiceUrl;
 
+    @Value("${internal.api.secret:techfix-internal-secret-2024}")
+    private String internalApiSecret;
+
     public AuthFilter(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.build();
     }
@@ -78,6 +81,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
                     ServerHttpRequest mutated = exchange.getRequest().mutate()
                             .header("X-User-Role", role)
                             .header("X-User-Username", user.getUsername())
+                            .header("X-Internal-Secret", internalApiSecret)
                             .build();
 
                     log.debug("Auth OK → user={} role={} → {}", user.getUsername(), role, path);

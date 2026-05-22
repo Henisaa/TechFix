@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useUsuarios } from '../hooks/useUsuarios';
 import StatusBadge from '../components/ui/StatusBadge';
-import { FiUserPlus, FiEdit2, FiTrash2, FiShield, FiRefreshCw, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
+import { FiUserPlus, FiTrash2, FiRefreshCw, FiToggleLeft, FiToggleRight, FiShield, FiArrowRight } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
 const Usuarios = () => {
-  const { usuarios, loading, fetchUsuarios, createUsuario, toggleStatus, deleteUsuario, assignRole } = useUsuarios();
+  const { usuarios, loading, fetchUsuarios, createUsuario, toggleStatus, deleteUsuario, assignRole, transferAdmin } = useUsuarios();
   const { user: currentUser } = useAuth();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferFromUser, setTransferFromUser] = useState(null);
+  const [transferToId, setTransferToId] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
 
   const [formData, setFormData] = useState({
@@ -24,6 +27,9 @@ const Usuarios = () => {
     fetchUsuarios();
   }, [fetchUsuarios]);
 
+  const activeAdmins = usuarios.filter(u => u.role === 'ADMIN' && u.active);
+  const isOnlyActiveAdmin = (u) => u.role === 'ADMIN' && u.active && activeAdmins.length <= 1;
+
   const handleCreate = async (e) => {
     e.preventDefault();
     const success = await createUsuario(formData);
@@ -34,7 +40,7 @@ const Usuarios = () => {
   };
 
   const handleDelete = (id) => {
-    if (window.confirm("¿Estás seguro de eliminar este usuario?")) {
+    if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
       deleteUsuario(id);
     }
   };
@@ -43,8 +49,26 @@ const Usuarios = () => {
     assignRole(id, newRole);
   };
 
-  const filteredUsuarios = roleFilter === 'ALL' 
-    ? usuarios 
+  const openTransferModal = (u) => {
+    setTransferFromUser(u);
+    setTransferToId('');
+    setIsTransferModalOpen(true);
+  };
+
+  const handleTransfer = async (e) => {
+    e.preventDefault();
+    if (!transferToId) return;
+    const success = await transferAdmin(transferFromUser.id, parseInt(transferToId));
+    if (success) {
+      setIsTransferModalOpen(false);
+      setTransferFromUser(null);
+    }
+  };
+
+  const transferCandidates = usuarios.filter(u => u.active && u.role !== 'ADMIN');
+
+  const filteredUsuarios = roleFilter === 'ALL'
+    ? usuarios
     : usuarios.filter(u => u.role === roleFilter);
 
   return (
@@ -54,7 +78,7 @@ const Usuarios = () => {
           <h1 className="text-3xl font-bold text-slate-900">Gestión de Usuarios</h1>
           <p className="text-slate-600 mt-2">Administra los roles y accesos del sistema</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 bg-primary hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-md transition-colors"
         >
@@ -66,7 +90,7 @@ const Usuarios = () => {
         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-slate-700">Filtrar por rol:</span>
-            <select 
+            <select
               className="text-sm border-slate-300 rounded-md focus:ring-primary focus:border-primary"
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
@@ -126,20 +150,29 @@ const Usuarios = () => {
                     <StatusBadge status={u.active ? 'ACTIVO' : 'INACTIVO'} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end gap-3">
-                      <button 
+                    <div className="flex justify-end gap-3 items-center">
+                      {currentUser.role === 'ADMIN' && u.role === 'ADMIN' && u.id !== currentUser.id && (
+                        <button
+                          onClick={() => openTransferModal(u)}
+                          className="text-indigo-600 hover:text-indigo-800 text-lg"
+                          title="Transferir rol admin a otro usuario"
+                        >
+                          <FiArrowRight />
+                        </button>
+                      )}
+                      <button
                         onClick={() => toggleStatus(u.id)}
-                        className={`text-xl ${u.active ? 'text-green-600 hover:text-green-800' : 'text-slate-400 hover:text-slate-600'}`}
-                        title={u.active ? "Desactivar" : "Activar"}
-                        disabled={u.id === currentUser.id && u.role === 'ADMIN'}
+                        className={`text-xl ${u.active ? 'text-green-600 hover:text-green-800' : 'text-slate-400 hover:text-slate-600'} ${isOnlyActiveAdmin(u) ? 'opacity-30 cursor-not-allowed' : ''}`}
+                        title={isOnlyActiveAdmin(u) ? 'No se puede desactivar al único admin activo' : (u.active ? 'Desactivar' : 'Activar')}
+                        disabled={isOnlyActiveAdmin(u)}
                       >
                         {u.active ? <FiToggleRight /> : <FiToggleLeft />}
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDelete(u.id)}
-                        className={`text-lg ${u.id === currentUser.id && u.role === 'ADMIN' ? 'text-slate-300 cursor-not-allowed' : 'text-red-500 hover:text-red-700'}`}
-                        title="Eliminar"
-                        disabled={u.id === currentUser.id && u.role === 'ADMIN'}
+                        className={`text-lg ${isOnlyActiveAdmin(u) ? 'text-slate-300 cursor-not-allowed' : 'text-red-500 hover:text-red-700'}`}
+                        title={isOnlyActiveAdmin(u) ? 'No se puede eliminar al único admin activo' : 'Eliminar'}
+                        disabled={isOnlyActiveAdmin(u)}
                       >
                         <FiTrash2 />
                       </button>
@@ -243,6 +276,68 @@ const Usuarios = () => {
                       type="submit"
                     >
                       Guardar Usuario
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isTransferModalOpen && transferFromUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto outline-none focus:outline-none bg-slate-900/50 backdrop-blur-sm">
+          <div className="relative w-full max-w-md mx-auto my-6">
+            <div className="relative flex flex-col w-full bg-white border-0 rounded-2xl shadow-2xl outline-none focus:outline-none">
+              <div className="flex items-start justify-between p-5 border-b border-solid border-slate-200 rounded-t-2xl">
+                <h3 className="text-xl font-semibold text-slate-800 flex items-center gap-2">
+                  <FiShield className="text-indigo-600" /> Transferir Rol Admin
+                </h3>
+                <button
+                  className="p-1 ml-auto bg-transparent border-0 text-slate-400 text-3xl leading-none font-semibold outline-none focus:outline-none hover:text-slate-600"
+                  onClick={() => setIsTransferModalOpen(false)}
+                >
+                  <span className="block h-6 w-6 text-2xl outline-none focus:outline-none">×</span>
+                </button>
+              </div>
+              <div className="relative p-6 flex-auto">
+                <p className="text-sm text-slate-600 mb-4">
+                  El usuario <strong>@{transferFromUser.username}</strong> perderá el rol ADMIN y pasará a ser TECNICO. El usuario seleccionado recibirá el rol ADMIN.
+                </p>
+                <form onSubmit={handleTransfer} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Nuevo Administrador</label>
+                    <select
+                      required
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      value={transferToId}
+                      onChange={(e) => setTransferToId(e.target.value)}
+                    >
+                      <option value="">Selecciona un usuario activo...</option>
+                      {transferCandidates.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          @{u.username} — {u.fullName} ({u.role})
+                        </option>
+                      ))}
+                    </select>
+                    {transferCandidates.length === 0 && (
+                      <p className="text-xs text-red-600 mt-1">No hay usuarios activos disponibles como destino.</p>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                    <button
+                      type="button"
+                      className="text-slate-500 font-bold px-6 py-2 text-sm"
+                      onClick={() => setIsTransferModalOpen(false)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!transferToId}
+                      className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white font-bold text-sm px-6 py-3 rounded-lg shadow transition-all"
+                    >
+                      Confirmar Transferencia
                     </button>
                   </div>
                 </form>

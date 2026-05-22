@@ -82,6 +82,19 @@ export const useUsuarios = () => {
     }
   };
 
+  const transferAdmin = async (fromId, toId) => {
+    try {
+      await userApi.patch(`/${fromId}/transfer-admin/${toId}`);
+      toast.success('Rol de administrador transferido exitosamente');
+      fetchUsuarios();
+      return true;
+    } catch (error) {
+      const msg = error?.response?.data?.message || 'No se pudo transferir el rol';
+      toast.error(msg);
+      return false;
+    }
+  };
+
   return {
     usuarios,
     loading,
@@ -91,6 +104,7 @@ export const useUsuarios = () => {
     updateUsuario,
     toggleStatus,
     assignRole,
-    deleteUsuario
+    deleteUsuario,
+    transferAdmin
   };
 };

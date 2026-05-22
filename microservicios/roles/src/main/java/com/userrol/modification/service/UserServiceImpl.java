@@ -7,6 +7,7 @@ import com.userrol.modification.model.User;
 import com.userrol.modification.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import java.util.List;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     @Override
     public User createUser(User user) {
@@ -34,6 +36,7 @@ public class UserServiceImpl implements UserService {
             user.setRole(Role.CLIENTE);
         }
         user.setActive(true);
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
 
         return userRepository.save(user);
     }
@@ -50,6 +53,7 @@ public class UserServiceImpl implements UserService {
 
         user.setRole(Role.CLIENTE);
         user.setActive(true);
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
 
         return userRepository.save(user);
     }
@@ -101,7 +105,7 @@ public class UserServiceImpl implements UserService {
             user.setEmail(userDetails.getEmail());
         }
         if (userDetails.getFullName() != null) user.setFullName(userDetails.getFullName());
-        if (userDetails.getPassword() != null) user.setPassword(userDetails.getPassword());
+        if (userDetails.getPassword() != null) user.setPassword(passwordEncoder.encode(userDetails.getPassword()));
         if (userDetails.getActive() != null)   user.setActive(userDetails.getActive());
 
         return userRepository.save(user);
@@ -111,14 +115,6 @@ public class UserServiceImpl implements UserService {
     public User assignRole(Long id, Role role) {
         log.info("Assigning role {} to user ID {}", role, id);
         User user = getUserById(id);
-
-        if (role == Role.ADMIN) {
-            long adminCount = userRepository.countByRole(Role.ADMIN);
-            if (adminCount >= 1) {
-                throw new ConflictException("SOLO PUEDE EXISTIR UN ADMIN EN EL SISTEMA");
-            }
-        }
-
         user.setRole(role);
         return userRepository.save(user);
     }
@@ -126,6 +122,12 @@ public class UserServiceImpl implements UserService {
     @Override
     public User toggleUserStatus(Long id) {
         User user = getUserById(id);
+
+        if (user.getRole() == Role.ADMIN && Boolean.TRUE.equals(user.getActive())
+                && userRepository.countByRoleAndActive(Role.ADMIN, true) <= 1) {
+            throw new ConflictException("No se puede desactivar al único administrador activo del sistema.");
+        }
+
         user.setActive(!user.getActive());
         return userRepository.save(user);
     }
@@ -134,10 +136,32 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(Long id) {
         User user = getUserById(id);
 
-        if (user.getRole() == Role.ADMIN) {
-            throw new ConflictException("Tu no puedes eliminar al admin, el admin te elimina a ti");
+        if (user.getRole() == Role.ADMIN
+                && userRepository.countByRoleAndActive(Role.ADMIN, true) <= 1) {
+            throw new ConflictException("No se puede eliminar al único administrador activo del sistema.");
         }
 
         userRepository.delete(user);
+    }
+
+    @Override
+    public User transferAdminRole(Long fromId, Long toId) {
+        User from = getUserById(fromId);
+
+        if (from.getRole() != Role.ADMIN) {
+            throw new ConflictException("El usuario con ID " + fromId + " no tiene el rol ADMIN.");
+        }
+
+        User to = getUserById(toId);
+
+        if (!Boolean.TRUE.equals(to.getActive())) {
+            throw new ConflictException("El usuario destino con ID " + toId + " no está activo.");
+        }
+
+        from.setRole(Role.TECNICO);
+        to.setRole(Role.ADMIN);
+
+        userRepository.save(from);
+        return userRepository.save(to);
     }
 }

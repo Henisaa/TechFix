@@ -17,4 +17,5 @@ public interface UserService {
     User assignRole(Long id, Role role);   
     User toggleUserStatus(Long id);
     void deleteUser(Long id);
+    User transferAdminRole(Long fromId, Long toId);
 }

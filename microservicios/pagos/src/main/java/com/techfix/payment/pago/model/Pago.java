@@ -7,7 +7,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 
@@ -49,9 +48,20 @@ public class Pago {
     @Column(length = 255)
     private String descripcion;
 
-    @Column(name = "fecha_pago", nullable = false)
-    @Builder.Default
-    private LocalDate fechaPago = LocalDate.now();
+    @Column(name = "fecha_pago", nullable = false, updatable = false)
+    private LocalDateTime fechaPago;
+
+    @Column(name = "created_by", nullable = false, updatable = false, length = 50)
+    private String createdBy;
+
+    @Column(name = "confirmed_by", length = 50)
+    private String confirmedBy;
+
+    @Column(name = "referencia_externa", length = 100)
+    private String referenciaExterna;
+
+    @Column(name = "razon_anulacion", length = 255)
+    private String razonAnulacion;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -23,3 +23,6 @@ logging:
   level:
     org.springframework.cloud.gateway: INFO
     com.techfix.gateway: DEBUG
+internal:
+  api:
+    secret: ${INTERNAL_API_SECRET:techfix-internal-secret-2024}

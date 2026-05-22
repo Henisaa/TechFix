@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,9 +24,10 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     @PostMapping("/login")
-    @Operation(summary = "Iniciar sesión", description = "Autentica con username y password (texto plano).")
+    @Operation(summary = "Iniciar sesión", description = "Autentica con username y password.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Autenticado"),
             @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")
@@ -35,7 +37,7 @@ public class UserController {
         String password = credentials.get("password");
         try {
             User user = userService.getUserByUsername(username);
-            if (!user.getPassword().equals(password)) {
+            if (!passwordEncoder.matches(password, user.getPassword())) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
             return ResponseEntity.ok(user);
@@ -84,7 +86,7 @@ public class UserController {
     }
 
     @GetMapping("/role/{role}")
-    @Operation(summary = "Filtrar por rol", description = "Roles disponibles: USER, TECNICO, ADMIN")
+    @Operation(summary = "Filtrar por rol", description = "Roles disponibles: CLIENTE, TECNICO, ADMIN")
     public ResponseEntity<List<User>> getUsersByRole(@PathVariable Role role) {
         return ResponseEntity.ok(userService.getUsersByRole(role));
     }
@@ -102,10 +104,9 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/assign-role")
-    @Operation(summary = "Asignar rol manualmente", description = "Permite asignar el rol técnico o admin.")
+    @Operation(summary = "Asignar rol manualmente", description = "Permite asignar cualquier rol.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Rol asignado"),
-            @ApiResponse(responseCode = "409", description = "Ya existe un ADMIN en el sistema")
+            @ApiResponse(responseCode = "200", description = "Rol asignado")
     })
     public ResponseEntity<User> assignRole(
             @PathVariable Long id,
@@ -120,13 +121,25 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Eliminar usuario", description = "El ADMIN no puede ser eliminado.")
+    @Operation(summary = "Eliminar usuario", description = "No se puede eliminar al único admin activo.")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Eliminado"),
-            @ApiResponse(responseCode = "409", description = "No se puede eliminar al ADMIN")
+            @ApiResponse(responseCode = "409", description = "No se puede eliminar al único admin activo")
     })
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{fromId}/transfer-admin/{toId}")
+    @Operation(summary = "Transferir rol admin", description = "Transfiere el rol ADMIN del usuario origen al destino de forma atómica.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Rol transferido"),
+            @ApiResponse(responseCode = "409", description = "El usuario origen no es ADMIN o el destino no está activo")
+    })
+    public ResponseEntity<User> transferAdmin(
+            @PathVariable Long fromId,
+            @PathVariable Long toId) {
+        return ResponseEntity.ok(userService.transferAdminRole(fromId, toId));
     }
 }

@@ -13,4 +13,5 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     List<Pago> findByIdVisitaTecnica(Long idVisitaTecnica);
     List<Pago> findByEstadoPago(EstadoPago estadoPago);
     boolean existsByIdVisitaTecnica(Long idVisitaTecnica);
+    boolean existsByIdVisitaTecnicaAndEstadoPagoIn(Long idVisitaTecnica, List<EstadoPago> estados);
 }

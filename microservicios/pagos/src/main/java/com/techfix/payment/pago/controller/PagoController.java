@@ -38,14 +38,14 @@ public class PagoController {
         @ApiResponse(responseCode = "201", description = "Pago creado exitosamente"),
         @ApiResponse(responseCode = "200", description = "Pago duplicado detectado — se retorna el pago original"),
         @ApiResponse(responseCode = "400", description = "Datos de pago inválidos"),
-        @ApiResponse(responseCode = "409", description = "Ya existe un pago para esta visita técnica")
+        @ApiResponse(responseCode = "409", description = "Ya existe un pago activo para esta visita técnica")
     })
     public ResponseEntity<Pago> nuevoPago(
             @PathVariable Long id,
             @Valid @RequestBody Pago pago,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestHeader(value = "X-User-Username", required = false) String username) {
 
-        
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             Optional<IdempotencyKey> existing = idempotencyService.findKey(idempotencyKey);
 
@@ -55,17 +55,14 @@ public class PagoController {
 
                 Pago cached = idempotencyService.deserializePago(existing.get().getResponseBody());
                 if (cached != null) {
-                    
                     return ResponseEntity.ok(cached);
                 }
             }
         }
 
-        
-        Pago creado = pagoService.crearPago(id, pago);
+        Pago creado = pagoService.crearPago(id, pago, username);
         log.info("Pago creado: id={} visita={}", creado.getId(), id);
 
-        
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             idempotencyService.saveKey(idempotencyKey, creado, HttpStatus.CREATED.value());
         }
@@ -88,11 +85,12 @@ public class PagoController {
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Pago actualizado exitosamente"),
         @ApiResponse(responseCode = "404", description = "Pago no encontrado"),
-        @ApiResponse(responseCode = "409", description = "El pago está ANULADO y no puede modificarse")
+        @ApiResponse(responseCode = "409", description = "El pago no puede modificarse en su estado actual")
     })
     public ResponseEntity<Pago> alterarPago(
             @PathVariable Long id,
-            @RequestBody Pago pagoDetalles) {
-        return ResponseEntity.ok(pagoService.alterarPago(id, pagoDetalles));
+            @RequestBody Pago pagoDetalles,
+            @RequestHeader(value = "X-User-Username", required = false) String username) {
+        return ResponseEntity.ok(pagoService.alterarPago(id, pagoDetalles, username));
     }
 }
