@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAgendamiento } from '../hooks/useAgendamiento';
 import { scheduleApi } from '../services/api';
 import toast from 'react-hot-toast';
+import CardPaymentForm from '../components/ui/CardPaymentForm';
 import {
   FiTool, FiCheckCircle, FiAlertTriangle, FiCreditCard,
   FiArrowLeft, FiUser, FiCalendar, FiDollarSign, FiInfo,
@@ -31,13 +32,12 @@ const METODOS_PAGO = [
   { value: 'TRANSFERENCIA',   label: '🏦 Transferencia' },
 ];
 
+const isCardMethod = (m) => m === 'TARJETA_DEBITO' || m === 'TARJETA_CREDITO';
+
 const getReferenciaInfo = (metodo) => {
   switch (metodo) {
     case 'TRANSFERENCIA':
       return { label: 'Número de operación bancaria', placeholder: 'Ej: 123456789', required: true };
-    case 'TARJETA_DEBITO':
-    case 'TARJETA_CREDITO':
-      return { label: 'Código de autorización', placeholder: 'Ej: AUTH-78421', required: true };
     default:
       return { label: 'Número de recibo (opcional)', placeholder: 'Se genera automáticamente si se deja vacío', required: false };
   }
@@ -62,8 +62,10 @@ const PagoTicket = () => {
 
   const [metodoPago, setMetodoPago] = useState('EFECTIVO');
   const [referenciaExterna, setReferenciaExterna] = useState('');
+  const [cardData, setCardData] = useState({ masked: '', valid: false });
 
   const referenciaInfo = getReferenciaInfo(metodoPago);
+  const esMetodoTarjeta = isCardMethod(metodoPago);
 
   // Carga la cita por ID
   useEffect(() => {
@@ -87,21 +89,21 @@ const PagoTicket = () => {
 
   useEffect(() => {
     setReferenciaExterna('');
+    setCardData({ masked: '', valid: false });
   }, [metodoPago]);
 
   const handlePagar = async (e) => {
     e.preventDefault();
     if (!cita || loadingPago) return;
+    if (esMetodoTarjeta && !cardData.valid) return;
 
     setLoadingPago(true);
     try {
-      // 1. Marcar el ticket como pagado en la agenda
       const res = await scheduleApi.patch(`/${citaId}/marcar-pagado`);
       setCita(res.data);
       setPagado(true);
       toast.success('✅ Servicio técnico pagado exitosamente');
     } catch (error) {
-      console.error('Error al pagar el ticket:', error);
       toast.error('No se pudo procesar el pago. Inténtalo de nuevo.');
     } finally {
       setLoadingPago(false);
@@ -129,32 +131,45 @@ const PagoTicket = () => {
   // Pantalla de pago exitoso
   if (pagado || estadoPagoTicket === 'PAGADO') {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-green-200 p-10 text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <FiCheckCircle className="text-green-600 text-4xl" />
+      <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-emerald-50 to-teal-50">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl border border-green-100 p-10 text-center">
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <div className="absolute inset-0 bg-green-100 rounded-full animate-ping opacity-30" />
+            <div className="relative w-24 h-24 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-lg">
+              <FiCheckCircle className="text-white text-5xl" />
+            </div>
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 mb-2">¡Servicio Pagado!</h1>
-          <p className="text-slate-500 mb-6">El servicio técnico ha sido pagado exitosamente.</p>
-          <div className="bg-slate-50 rounded-xl p-4 text-left mb-6">
-            <p className="text-sm text-slate-500">Ticket #</p>
-            <p className="text-2xl font-bold text-primary">#{cita.id}</p>
-            <p className="text-sm text-slate-500 mt-2">Monto pagado</p>
-            <p className="text-xl font-bold text-slate-900">{formatPrice(cita.precioCotizado)}</p>
-            <p className="text-sm text-slate-500 mt-2">Tipo de servicio</p>
-            <p className="text-base font-medium text-slate-700">{cita.tipoServicio}</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 mb-2">¡Operación Exitosa!</h1>
+          <p className="text-slate-500 mb-8">El servicio técnico ha sido registrado como completado y pagado.</p>
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-5 text-left mb-8 space-y-3">
+            <div className="flex justify-between">
+              <span className="text-sm text-slate-500">Ticket</span>
+              <span className="font-bold text-primary">#{cita.id}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-slate-500">Monto pagado</span>
+              <span className="font-bold text-slate-900 text-lg">{formatPrice(cita.precioCotizado)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-slate-500">Servicio</span>
+              <span className="font-medium text-slate-700">{cita.tipoServicio}</span>
+            </div>
             {cita.tecnico && (
-              <>
-                <p className="text-sm text-slate-500 mt-2">Técnico</p>
-                <p className="text-base font-medium text-slate-700">
-                  {cita.tecnico.nombre} {cita.tecnico.apellido || ''}
-                </p>
-              </>
+              <div className="flex justify-between">
+                <span className="text-sm text-slate-500">Técnico</span>
+                <span className="font-medium text-slate-700">{cita.tecnico.nombre} {cita.tecnico.apellido || ''}</span>
+              </div>
             )}
+            <div className="flex justify-between pt-2 border-t border-slate-200">
+              <span className="text-sm text-slate-500">Estado</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                <FiCheckCircle className="text-xs" /> COMPLETADA
+              </span>
+            </div>
           </div>
           <Link
             to="/ordenes"
-            className="block bg-primary hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-colors"
+            className="block bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3.5 px-6 rounded-2xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
           >
             Ver mis órdenes
           </Link>
@@ -277,21 +292,30 @@ const PagoTicket = () => {
             </div>
           </div>
 
-          {/* Referencia */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              {referenciaInfo.label}
-              {referenciaInfo.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            <input
-              type="text"
-              required={referenciaInfo.required}
-              placeholder={referenciaInfo.placeholder}
-              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-              value={referenciaExterna}
-              onChange={(e) => setReferenciaExterna(e.target.value)}
-            />
-          </div>
+          {/* Tarjeta o referencia */}
+          {esMetodoTarjeta ? (
+            <div className="mb-6">
+              <CardPaymentForm
+                onCardData={setCardData}
+                disabled={loadingPago}
+              />
+            </div>
+          ) : (
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                {referenciaInfo.label}
+                {referenciaInfo.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+              <input
+                type="text"
+                required={referenciaInfo.required}
+                placeholder={referenciaInfo.placeholder}
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                value={referenciaExterna}
+                onChange={(e) => setReferenciaExterna(e.target.value)}
+              />
+            </div>
+          )}
 
           {/* Resumen */}
           <div className="bg-slate-50 rounded-xl p-4 mb-5 flex justify-between items-center">
@@ -302,9 +326,9 @@ const PagoTicket = () => {
           {/* Botón */}
           <button
             type="submit"
-            disabled={loadingPago}
+            disabled={loadingPago || (esMetodoTarjeta && !cardData.valid)}
             className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-base transition-all ${
-              loadingPago
+              loadingPago || (esMetodoTarjeta && !cardData.valid)
                 ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 : 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg hover:-translate-y-0.5'
             }`}

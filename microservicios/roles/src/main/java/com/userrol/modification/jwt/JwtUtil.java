@@ -33,7 +33,7 @@ public class JwtUtil {
                 .claim("fullName", user.getFullName())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
-                .signWith(key(), Jwts.SIG.HS512)
+                .signWith(key(), Jwts.SIG.HS256)
                 .compact();
     }
 

@@ -83,7 +83,6 @@ services:
     build:
       context: ./microservicios/roles
       dockerfile: Dockerfile
-      network: host
     container_name: techfix_svc_roles
     restart: unless-stopped
     networks:
@@ -99,6 +98,7 @@ services:
       SERVER_PORT: 8080
       INTERNAL_API_SECRET: "techfix-internal-secret-2024"
       JWT_SECRET: "cGFyYWJpZW5vZGViZXJpYXNlc3RhcmJhc2U2NHRlY2hmaXgK"
+      ADMIN_PASSWORD: "admin123"
     depends_on:
       postgres-usuarios:
         condition: service_healthy
@@ -112,7 +112,6 @@ services:
     build:
       context: ./microservicios/pagos
       dockerfile: Dockerfile
-      network: host
     container_name: techfix_svc_pagos
     restart: unless-stopped
     networks:
@@ -139,7 +138,6 @@ services:
     build:
       context: ./microservicios/stock
       dockerfile: Dockerfile
-      network: host
     container_name: techfix_svc_stock
     restart: unless-stopped
     networks:
@@ -165,7 +163,6 @@ services:
     build:
       context: ./microservicios/agenda
       dockerfile: Dockerfile
-      network: host
     container_name: techfix_svc_agenda
     restart: unless-stopped
     networks:
@@ -191,7 +188,6 @@ services:
     build:
       context: ./microservicios/gateway
       dockerfile: Dockerfile
-      network: host
     container_name: techfix_svc_gateway
     restart: unless-stopped
     networks:
@@ -222,7 +218,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      network: host
     container_name: techfix_frontend
     restart: unless-stopped
     networks:

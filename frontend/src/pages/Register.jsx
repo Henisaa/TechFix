@@ -40,7 +40,13 @@ const Register = () => {
     });
     setLoading(false);
     if (user) {
-      navigate('/');
+      if (user.role === 'ADMIN') {
+        navigate('/usuarios');
+      } else if (user.role === 'TECNICO') {
+        navigate('/ordenes');
+      } else {
+        navigate('/');
+      }
     }
   };
 

@@ -32,7 +32,8 @@ export const AuthProvider = ({ children }) => {
       toast.success(`Bienvenido, ${userData.fullName || userData.username}`);
       return userData;
     } catch (error) {
-      toast.error('Credenciales incorrectas');
+      const msg = error?.response?.data?.message || 'Credenciales incorrectas';
+      toast.error(msg);
       return null;
     } finally {
       setLoading(false);
@@ -43,10 +44,15 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     try {
       await userApi.post('/register', data);
-      toast.success('Cuenta creada. Inicia sesión para continuar.');
-      return true;
+      const res = await userApi.post('/login', { username: data.username, password: data.password });
+      const { token, ...userData } = res.data;
+      localStorage.setItem('techfix_user', JSON.stringify({ token, user: userData }));
+      setState({ token, user: userData });
+      toast.success(`Bienvenido, ${userData.fullName || userData.username}`);
+      return userData;
     } catch (error) {
-      toast.error('No se pudo crear la cuenta');
+      const msg = error?.response?.data?.message || 'No se pudo crear la cuenta';
+      toast.error(msg);
       return null;
     } finally {
       setLoading(false);

@@ -4,6 +4,7 @@ import com.userrol.modification.dto.LoginRequest;
 import com.userrol.modification.dto.LoginResponse;
 import com.userrol.modification.exception.ConflictException;
 import com.userrol.modification.exception.ResourceNotFoundException;
+import com.userrol.modification.exception.UnauthorizedException;
 import com.userrol.modification.jwt.JwtUtil;
 import com.userrol.modification.model.Role;
 import com.userrol.modification.model.User;
@@ -30,14 +31,14 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Credenciales inválidas"));
+                .orElseThrow(() -> new UnauthorizedException("Credenciales inválidas"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new ResourceNotFoundException("Credenciales inválidas");
+            throw new UnauthorizedException("Credenciales inválidas");
         }
 
         if (!Boolean.TRUE.equals(user.getActive())) {
-            throw new ConflictException("La cuenta está inactiva");
+            throw new UnauthorizedException("La cuenta está inactiva");
         }
 
         String token = jwtUtil.generateToken(user);

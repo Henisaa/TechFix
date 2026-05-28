@@ -1,12 +1,13 @@
-FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
+FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /build
 COPY pom.xml .
 RUN mvn dependency:go-offline -q
 COPY src ./src
 RUN mvn package -DskipTests -q
-FROM eclipse-temurin:21-jre-alpine
+
+FROM eclipse-temurin:21-jre
 WORKDIR /app
-RUN addgroup -S techfix && adduser -S techfix -G techfix
+RUN groupadd -r techfix && useradd -r -g techfix techfix
 USER techfix
 COPY --from=builder /build/target/*.jar app.jar
 EXPOSE 8082

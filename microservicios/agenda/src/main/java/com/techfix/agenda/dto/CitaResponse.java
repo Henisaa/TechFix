@@ -19,6 +19,8 @@ public class CitaResponse {
     private TecnicoResponse tecnico;
     private BigDecimal precioCotizado;
     private String estadoPagoTicket;
+    private String descripcionRealizado;
+    private String metodoPago;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -124,6 +124,21 @@ export const useAgendamiento = () => {
     }
   };
 
+  const gestionarServicio = async (id, datos) => {
+    setLoading(true);
+    try {
+      const res = await scheduleApi.patch(`/${id}/gestionar`, datos);
+      toast.success(datos.accion === 'CANCELAR' ? 'Servicio cancelado' : 'Servicio gestionado correctamente');
+      return res.data;
+    } catch (error) {
+      const msg = error?.response?.data?.message || 'No se pudo gestionar el servicio';
+      toast.error(msg);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     citas,
     clientes,
@@ -137,5 +152,6 @@ export const useAgendamiento = () => {
     crearCita,
     actualizarEstado,
     eliminarCita,
+    gestionarServicio,
   };
 };

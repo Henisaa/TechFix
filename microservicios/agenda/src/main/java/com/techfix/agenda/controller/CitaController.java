@@ -1,6 +1,7 @@
 import com.techfix.agenda.dto.CitaRequest;
 import com.techfix.agenda.dto.CitaResponse;
 import com.techfix.agenda.dto.EstadoUpdateRequest;
+import com.techfix.agenda.dto.GestionServicioRequest;
 import com.techfix.agenda.dto.PrecioTicketRequest;
 import com.techfix.agenda.model.EstadoCita;
 import com.techfix.agenda.service.CitaService;
@@ -66,6 +67,13 @@ public class CitaController {
     @PatchMapping("/{id}/marcar-pagado")
     public ResponseEntity<CitaResponse> marcarPagado(@PathVariable Long id) {
         return ResponseEntity.ok(citaService.marcarPagado(id));
+    }
+
+    @PatchMapping("/{id}/gestionar")
+    public ResponseEntity<CitaResponse> gestionarServicio(
+            @PathVariable Long id,
+            @Valid @RequestBody GestionServicioRequest request) {
+        return ResponseEntity.ok(citaService.gestionarServicio(id, request));
     }
 
     @DeleteMapping("/{id}")

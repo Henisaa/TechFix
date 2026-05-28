@@ -3,6 +3,7 @@ package com.techfix.agenda.service;
 import com.techfix.agenda.dto.CitaRequest;
 import com.techfix.agenda.dto.CitaResponse;
 import com.techfix.agenda.dto.EstadoUpdateRequest;
+import com.techfix.agenda.dto.GestionServicioRequest;
 import com.techfix.agenda.dto.PrecioTicketRequest;
 import com.techfix.agenda.model.EstadoCita;
 
@@ -27,6 +28,8 @@ public interface CitaService {
     CitaResponse asignarPrecio(Long id, PrecioTicketRequest request);
 
     CitaResponse marcarPagado(Long id);
+
+    CitaResponse gestionarServicio(Long id, GestionServicioRequest request);
 
     void delete(Long id);
 }

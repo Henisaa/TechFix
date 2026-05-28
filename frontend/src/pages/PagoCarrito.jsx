@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useCarritoApi } from '../hooks/useCarritoApi';
+import CardPaymentForm from '../components/ui/CardPaymentForm';
 import {
   FiShoppingCart, FiTrash2, FiPlus, FiMinus, FiAlertTriangle,
   FiCreditCard, FiCheckCircle, FiArrowLeft, FiPackage,
@@ -18,13 +19,12 @@ const METODOS_PAGO = [
   { value: 'TRANSFERENCIA',   label: '🏦 Transferencia' },
 ];
 
+const isCardMethod = (m) => m === 'TARJETA_DEBITO' || m === 'TARJETA_CREDITO';
+
 const getReferenciaInfo = (metodo) => {
   switch (metodo) {
     case 'TRANSFERENCIA':
       return { label: 'Número de operación bancaria', placeholder: 'Ej: 123456789', required: true };
-    case 'TARJETA_DEBITO':
-    case 'TARJETA_CREDITO':
-      return { label: 'Código de autorización', placeholder: 'Ej: AUTH-78421', required: true };
     default:
       return { label: 'Número de recibo (opcional)', placeholder: 'Se genera automáticamente si se deja vacío', required: false };
   }
@@ -39,8 +39,10 @@ const PagoCarrito = () => {
   const [metodoPago, setMetodoPago] = useState('EFECTIVO');
   const [referenciaExterna, setReferenciaExterna] = useState('');
   const [ordenConfirmada, setOrdenConfirmada] = useState(null);
+  const [cardData, setCardData] = useState({ masked: '', valid: false });
 
   const referenciaInfo = getReferenciaInfo(metodoPago);
+  const esMetodoTarjeta = isCardMethod(metodoPago);
 
   // Detecta ítems con sobrestock
   const itemsConProblema = cart.filter((item) => item.qty > item.stock);
@@ -48,6 +50,7 @@ const PagoCarrito = () => {
 
   useEffect(() => {
     setReferenciaExterna('');
+    setCardData({ masked: '', valid: false });
   }, [metodoPago]);
 
   // Redirige si el carrito está vacío y no hay orden confirmada
@@ -66,6 +69,9 @@ const PagoCarrito = () => {
   const handlePagar = async (e) => {
     e.preventDefault();
     if (hayProblemas || !user) return;
+    if (esMetodoTarjeta && !cardData.valid) return;
+
+    const refFinal = esMetodoTarjeta ? cardData.masked : referenciaExterna.trim();
 
     const items = cart.map((item) => ({
       productoId: item.id,
@@ -76,7 +82,7 @@ const PagoCarrito = () => {
     const orden = await confirmarOrden({
       clienteId: user.id,
       metodoPago,
-      referenciaExterna: referenciaExterna.trim(),
+      referenciaExterna: refFinal,
       items,
     });
 
@@ -304,28 +310,37 @@ const PagoCarrito = () => {
               </select>
             </div>
 
-            {/* Referencia */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                {referenciaInfo.label}
-                {referenciaInfo.required && <span className="text-red-500 ml-1">*</span>}
-              </label>
-              <input
-                type="text"
-                required={referenciaInfo.required}
-                placeholder={referenciaInfo.placeholder}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                value={referenciaExterna}
-                onChange={(e) => setReferenciaExterna(e.target.value)}
-              />
-            </div>
+            {/* Formulario de tarjeta o referencia */}
+            {esMetodoTarjeta ? (
+              <div className="mb-6">
+                <CardPaymentForm
+                  onCardData={setCardData}
+                  disabled={loading}
+                />
+              </div>
+            ) : (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  {referenciaInfo.label}
+                  {referenciaInfo.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                <input
+                  type="text"
+                  required={referenciaInfo.required}
+                  placeholder={referenciaInfo.placeholder}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                  value={referenciaExterna}
+                  onChange={(e) => setReferenciaExterna(e.target.value)}
+                />
+              </div>
+            )}
 
             {/* Botón */}
             <button
               type="submit"
-              disabled={loading || hayProblemas || cart.length === 0}
+              disabled={loading || hayProblemas || cart.length === 0 || (esMetodoTarjeta && !cardData.valid)}
               className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-base transition-all ${
-                loading || hayProblemas || cart.length === 0
+                loading || hayProblemas || cart.length === 0 || (esMetodoTarjeta && !cardData.valid)
                   ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   : 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg hover:-translate-y-0.5'
               }`}

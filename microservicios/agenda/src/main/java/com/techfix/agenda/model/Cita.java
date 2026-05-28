@@ -56,6 +56,12 @@ public class Cita {
     @Builder.Default
     private String estadoPagoTicket = "SIN_PRECIO";
 
+    @Column(name = "descripcion_realizado", length = 1000)
+    private String descripcionRealizado;
+
+    @Column(name = "metodo_pago", length = 30)
+    private String metodoPago;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

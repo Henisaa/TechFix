@@ -55,9 +55,12 @@ const handleResponseError = (error) => {
     const msg = error.response.data?.message || error.response.data?.error;
 
     if (status === 401) {
-      toast.error("Sesión expirada — inicia sesión nuevamente");
-      localStorage.removeItem("techfix_user");
-      window.location.href = "/login";
+      const stored = localStorage.getItem("techfix_user");
+      if (stored) {
+        toast.error("Sesión expirada — inicia sesión nuevamente");
+        localStorage.removeItem("techfix_user");
+        window.location.href = "/login";
+      }
     } else if (status === 403) {
       toast.error(msg || "No tienes permisos para esta acción");
     } else if (status === 404) {

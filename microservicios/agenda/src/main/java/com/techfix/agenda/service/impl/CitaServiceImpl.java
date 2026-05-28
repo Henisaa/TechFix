@@ -3,6 +3,7 @@ package com.techfix.agenda.service.impl;
 import com.techfix.agenda.dto.CitaRequest;
 import com.techfix.agenda.dto.CitaResponse;
 import com.techfix.agenda.dto.EstadoUpdateRequest;
+import com.techfix.agenda.dto.GestionServicioRequest;
 import com.techfix.agenda.dto.PrecioTicketRequest;
 import com.techfix.agenda.exception.BusinessException;
 import com.techfix.agenda.exception.ResourceNotFoundException;
@@ -132,7 +133,39 @@ public class CitaServiceImpl implements CitaService {
             throw new BusinessException("El ticket no tiene un precio asignado o ya fue pagado.");
         }
         cita.setEstadoPagoTicket("PAGADO");
+        cita.setEstado(EstadoCita.COMPLETADA);
         return citaMapper.toResponse(citaRepository.save(cita));
+    }
+
+    @Override
+    public CitaResponse gestionarServicio(Long id, GestionServicioRequest request) {
+        Cita cita = getOrThrow(id);
+        String accion = request.getAccion();
+
+        if ("CANCELAR".equalsIgnoreCase(accion)) {
+            cita.setEstado(EstadoCita.CANCELADA);
+            cita.setEstadoPagoTicket("CANCELADO");
+            if (request.getDescripcionRealizado() != null) {
+                cita.setDescripcionRealizado(request.getDescripcionRealizado());
+            }
+            return citaMapper.toResponse(citaRepository.save(cita));
+        }
+
+        if ("COMPLETAR".equalsIgnoreCase(accion)) {
+            if (request.getPrecio() == null || request.getPrecio().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                throw new BusinessException("El precio debe ser mayor a 0.");
+            }
+            cita.setPrecioCotizado(request.getPrecio());
+            cita.setDescripcionRealizado(request.getDescripcionRealizado());
+            if (request.getMetodoPago() != null) {
+                cita.setMetodoPago(request.getMetodoPago());
+            }
+            cita.setEstado(EstadoCita.COMPLETADA);
+            cita.setEstadoPagoTicket("PENDIENTE_PAGO");
+            return citaMapper.toResponse(citaRepository.save(cita));
+        }
+
+        throw new BusinessException("Acción inválida. Use COMPLETAR o CANCELAR.");
     }
 
     @Override
