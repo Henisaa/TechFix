@@ -125,6 +125,7 @@ const Catalogo = () => {
               <div key={producto.id} className="relative group">
                 <ProductCard
                   product={{
+                    id: producto.id,
                     cod_repuesto: producto.sku,
                     nombre_repuesto: producto.name,
                     categoria: producto.categoryName || 'Sin categoría',

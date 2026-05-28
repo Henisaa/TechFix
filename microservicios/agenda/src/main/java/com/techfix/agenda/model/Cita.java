@@ -6,6 +6,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -46,6 +47,14 @@ public class Cita {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tecnico_id")
     private Tecnico tecnico;
+
+    // === Campos de Ticket de Soporte TI ===
+    @Column(name = "precio_cotizado", precision = 10, scale = 2)
+    private BigDecimal precioCotizado;
+
+    @Column(name = "estado_pago_ticket", length = 30)
+    @Builder.Default
+    private String estadoPagoTicket = "SIN_PRECIO";
 
     @CreationTimestamp
     @Column(updatable = false)

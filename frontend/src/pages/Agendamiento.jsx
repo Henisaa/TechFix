@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAgendamiento } from '../hooks/useAgendamiento';
 import { useAuth } from '../context/AuthContext';
+import { scheduleApi } from '../services/api';
+import toast from 'react-hot-toast';
 import {
-  FiCalendar, FiClock, FiPlus, FiRefreshCw, FiCheckCircle, FiXCircle, FiTool,
+  FiCalendar, FiClock, FiPlus, FiRefreshCw, FiCheckCircle, FiXCircle, FiTool, FiDollarSign, FiX,
 } from 'react-icons/fi';
 
 const TIPO_SERVICIO = ['REPARACION', 'INSTALACION'];
@@ -41,6 +43,11 @@ const Agendamiento = () => {
     hora: '10:00',
     tecnicoId: '',
   });
+
+  // Estado del modal de precio
+  const [precioModal, setPrecioModal] = useState(null); // { citaId, descripcionActual }
+  const [precioForm, setPrecioForm] = useState({ precioCotizado: '', descripcionTrabajo: '' });
+  const [loadingPrecio, setLoadingPrecio] = useState(false);
 
   const isStaff = user?.role === 'ADMIN' || user?.role === 'TECNICO';
 
@@ -86,6 +93,31 @@ const Agendamiento = () => {
   const handleEstado = async (id, estado) => {
     const result = await actualizarEstado(id, estado);
     if (result) handleRefresh();
+  };
+
+  // Abre el modal para asignar precio
+  const handleAbrirPrecioModal = (cita) => {
+    setPrecioModal({ citaId: cita.id });
+    setPrecioForm({ precioCotizado: '', descripcionTrabajo: cita.descripcion || '' });
+  };
+
+  // Envía el precio al backend
+  const handleAsignarPrecio = async (e) => {
+    e.preventDefault();
+    if (!precioModal || !precioForm.precioCotizado) return;
+    setLoadingPrecio(true);
+    try {
+      await scheduleApi.patch(`/${precioModal.citaId}/precio`, {
+        precioCotizado: parseFloat(precioForm.precioCotizado),
+      });
+      toast.success('Precio asignado al ticket. El cliente ya puede pagar.');
+      setPrecioModal(null);
+      handleRefresh();
+    } catch {
+      toast.error('No se pudo asignar el precio');
+    } finally {
+      setLoadingPrecio(false);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -313,6 +345,15 @@ const Agendamiento = () => {
                                 <FiCheckCircle className="inline" /> Completar
                               </button>
                             )}
+                            {cita.estado === 'COMPLETADA' && !cita.estadoPagoTicket && (
+                              <button
+                                onClick={() => handleAbrirPrecioModal(cita)}
+                                className="flex items-center gap-1 text-primary hover:text-blue-700 text-sm font-medium"
+                                title="Asignar precio al ticket"
+                              >
+                                <FiDollarSign /> Asignar Precio
+                              </button>
+                            )}
                             {cita.estado !== 'CANCELADA' && cita.estado !== 'COMPLETADA' && (
                               <button
                                 onClick={() => handleDelete(cita.id)}
@@ -331,6 +372,88 @@ const Agendamiento = () => {
               </table>
             </div>
           )}
+        </div>
+      )}
+      {/* Modal: Asignar Precio al Ticket */}
+      {precioModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <FiDollarSign className="text-primary" /> Asignar Precio al Ticket #{precioModal.citaId}
+              </h3>
+              <button
+                onClick={() => setPrecioModal(null)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <FiX className="text-xl" />
+              </button>
+            </div>
+            <form onSubmit={handleAsignarPrecio} className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Descripción del Trabajo Realizado
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder="Ej: Se reemplazó la placa base y se actualizó el firmware..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                  value={precioForm.descripcionTrabajo}
+                  onChange={(e) => setPrecioForm({ ...precioForm, descripcionTrabajo: e.target.value })}
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Esta descripción es informativa para el cliente.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Precio del Servicio (CLP) <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">$</span>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    step="1"
+                    placeholder="0"
+                    className="w-full pl-8 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                    value={precioForm.precioCotizado}
+                    onChange={(e) => setPrecioForm({ ...precioForm, precioCotizado: e.target.value })}
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Al confirmar, el cliente recibirá la opción de pagar este monto.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setPrecioModal(null)}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={loadingPrecio || !precioForm.precioCotizado}
+                  className="flex items-center gap-2 bg-primary hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all text-sm"
+                >
+                  {loadingPrecio ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      Asignando...
+                    </>
+                  ) : (
+                    <><FiDollarSign /> Asignar Precio</>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

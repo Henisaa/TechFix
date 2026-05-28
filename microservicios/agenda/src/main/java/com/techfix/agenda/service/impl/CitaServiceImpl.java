@@ -3,6 +3,7 @@ package com.techfix.agenda.service.impl;
 import com.techfix.agenda.dto.CitaRequest;
 import com.techfix.agenda.dto.CitaResponse;
 import com.techfix.agenda.dto.EstadoUpdateRequest;
+import com.techfix.agenda.dto.PrecioTicketRequest;
 import com.techfix.agenda.exception.BusinessException;
 import com.techfix.agenda.exception.ResourceNotFoundException;
 import com.techfix.agenda.mapper.CitaMapper;
@@ -113,6 +114,24 @@ public class CitaServiceImpl implements CitaService {
     public CitaResponse updateEstado(Long id, EstadoUpdateRequest request) {
         Cita cita = getOrThrow(id);
         cita.setEstado(request.getEstado());
+        return citaMapper.toResponse(citaRepository.save(cita));
+    }
+
+    @Override
+    public CitaResponse asignarPrecio(Long id, PrecioTicketRequest request) {
+        Cita cita = getOrThrow(id);
+        cita.setPrecioCotizado(request.getPrecioCotizado());
+        cita.setEstadoPagoTicket("PENDIENTE_PAGO");
+        return citaMapper.toResponse(citaRepository.save(cita));
+    }
+
+    @Override
+    public CitaResponse marcarPagado(Long id) {
+        Cita cita = getOrThrow(id);
+        if (!"PENDIENTE_PAGO".equals(cita.getEstadoPagoTicket())) {
+            throw new BusinessException("El ticket no tiene un precio asignado o ya fue pagado.");
+        }
+        cita.setEstadoPagoTicket("PAGADO");
         return citaMapper.toResponse(citaRepository.save(cita));
     }
 

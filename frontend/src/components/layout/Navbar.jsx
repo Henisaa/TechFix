@@ -1,10 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FiLogOut, FiMenu, FiX, FiTool } from 'react-icons/fi';
+import { useCart } from '../../context/CartContext';
+import { FiLogOut, FiMenu, FiX, FiTool, FiShoppingCart } from 'react-icons/fi';
 import { useState } from 'react';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const { totalItems } = useCart();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -48,6 +50,20 @@ const Navbar = () => {
                 {link.name}
               </Link>
             ))}
+
+            {/* Ícono Carrito */}
+            <Link
+              to="/pago-carrito"
+              className="relative p-2 text-slate-300 hover:text-accent transition-colors"
+              title="Ver carrito"
+            >
+              <FiShoppingCart className="text-xl" />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none shadow">
+                  {totalItems > 99 ? '99+' : totalItems}
+                </span>
+              )}
+            </Link>
 
             {user ? (
               <div className="flex items-center gap-4 ml-4 pl-4 border-l border-slate-700">
@@ -95,6 +111,21 @@ const Navbar = () => {
                 {link.name}
               </Link>
             ))}
+            {/* Carrito en móvil */}
+            <Link
+              to="/pago-carrito"
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium hover:bg-slate-800"
+              onClick={() => setIsOpen(false)}
+            >
+              <FiShoppingCart />
+              Carrito
+              {totalItems > 0 && (
+                <span className="bg-accent text-white text-xs font-bold rounded-full px-2 py-0.5 ml-1">
+                  {totalItems}
+                </span>
+              )}
+            </Link>
+
             {user ? (
               <button
                 onClick={() => { handleLogout(); setIsOpen(false); }}

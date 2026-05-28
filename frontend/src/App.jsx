@@ -6,10 +6,13 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import Home from "./pages/Home";
 import Catalogo from "./pages/Catalogo";
+import ProductoDetalle from "./pages/ProductoDetalle";
 import Agendamiento from "./pages/Agendamiento";
 import Ordenes from "./pages/Ordenes";
 import Inventario from "./pages/Inventario";
 import Pagos from "./pages/Pagos";
+import PagoCarrito from "./pages/PagoCarrito";
+import PagoTicket from "./pages/PagoTicket";
 import Usuarios from "./pages/Usuarios";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -24,6 +27,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/catalogo" element={<Catalogo />} />
+            <Route path="/catalogo/:id" element={<ProductoDetalle />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
@@ -40,6 +44,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Ordenes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pago-carrito"
+              element={
+                <ProtectedRoute>
+                  <PagoCarrito />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pago-ticket/:citaId"
+              element={
+                <ProtectedRoute>
+                  <PagoTicket />
                 </ProtectedRoute>
               }
             />

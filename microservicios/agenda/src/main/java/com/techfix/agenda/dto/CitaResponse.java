@@ -4,6 +4,7 @@ import com.techfix.agenda.model.EstadoCita;
 import com.techfix.agenda.model.TipoServicio;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -16,6 +17,8 @@ public class CitaResponse {
     private String descripcion;
     private ClienteResponse cliente;
     private TecnicoResponse tecnico;
+    private BigDecimal precioCotizado;
+    private String estadoPagoTicket;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

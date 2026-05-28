@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAgendamiento } from '../hooks/useAgendamiento';
 import { useAuth } from '../context/AuthContext';
-import { FiActivity, FiRefreshCw, FiSearch, FiCheckCircle } from 'react-icons/fi';
+import { FiActivity, FiRefreshCw, FiSearch, FiCheckCircle, FiDollarSign } from 'react-icons/fi';
 
 const ESTADO_COLORS = {
   PENDIENTE: 'bg-yellow-100 text-yellow-800',
@@ -36,8 +37,14 @@ const TimelineStep = ({ label, active, isCurrent }) => (
   </div>
 );
 
+const formatPrice = (price) => {
+  if (!price) return null;
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(price);
+};
+
 const Ordenes = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { citas, loading, fetchTodasCitas, fetchCitasByCliente, actualizarEstado } = useAgendamiento();
 
   const [busqueda, setBusqueda] = useState('');
@@ -173,6 +180,7 @@ const Ordenes = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Equipo</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Fecha</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Precio / Pago</th>
                   {isStaff && (
                     <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Cambiar Estado</th>
                   )}
@@ -196,6 +204,30 @@ const Ordenes = () => {
                       <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[cita.estado] || 'bg-slate-100 text-slate-700'}`}>
                         {cita.estado || 'PENDIENTE'}
                       </span>
+                    </td>
+                    {/* Precio / Pago Ticket */}
+                    <td className="px-6 py-4">
+                      {cita.estadoPagoTicket === 'PAGADO' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+                          <FiCheckCircle className="text-xs" /> Pagado
+                        </span>
+                      ) : cita.estadoPagoTicket === 'PENDIENTE_PAGO' && !isStaff ? (
+                        <button
+                          onClick={() => navigate(`/pago-ticket/${cita.id}`)}
+                          className="inline-flex items-center gap-1.5 bg-primary hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm hover:shadow-md"
+                        >
+                          <FiDollarSign className="text-xs" />
+                          Pagar {cita.precioCotizado ? formatPrice(cita.precioCotizado) : ''}
+                        </button>
+                      ) : cita.estadoPagoTicket === 'PENDIENTE_PAGO' && isStaff ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">
+                          <FiDollarSign className="text-xs" /> {formatPrice(cita.precioCotizado)} — Pendiente
+                        </span>
+                      ) : cita.precioCotizado ? (
+                        <span className="text-sm text-slate-600">{formatPrice(cita.precioCotizado)}</span>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
                     </td>
                     {isStaff && (
                       <td className="px-6 py-4 text-right">
