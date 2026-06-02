@@ -56,6 +56,8 @@ const PagoCarrito = () => {
       productoId: item.id,
       cantidad: item.qty,
       precioUnitario: item.precio,
+      nombre: item.nombre,
+      sku: item.sku || '',
     }));
 
     const orden = await confirmarOrden({

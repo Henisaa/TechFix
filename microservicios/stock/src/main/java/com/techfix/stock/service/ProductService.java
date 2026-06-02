@@ -128,18 +128,26 @@ public class ProductService {
         }
         Product product = getOrThrow(req.getProductId());
         int before = product.getQuantityInStock();
-        int after = before + req.getQuantity();
+        
+        int qty = req.getQuantity();
+        if (req.getMovementType() == MovementType.SALE || req.getMovementType() == MovementType.DAMAGE) {
+            qty = -Math.abs(qty);
+        } else if (req.getMovementType() == MovementType.PURCHASE || req.getMovementType() == MovementType.RETURN) {
+            qty = Math.abs(qty);
+        }
+        
+        int after = before + qty;
 
         if (after < 0) {
             throw new InsufficientStockException(
-                    "Insufficient stock: available=" + before + ", requested=" + Math.abs(req.getQuantity()));
+                    "Insufficient stock: available=" + before + ", requested=" + Math.abs(qty));
         }
 
         product.setQuantityInStock(after);
         productRepository.save(product);
 
         StockMovement movement = recordMovement(
-                product, req.getMovementType(), req.getQuantity(),
+                product, req.getMovementType(), qty,
                 before, after, req.getUnitCost(), req.getReference(), req.getNotes());
         if (req.getCreatedBy() != null)
             movement.setCreatedBy(req.getCreatedBy());

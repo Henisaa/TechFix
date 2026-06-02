@@ -20,15 +20,25 @@ export const useAgendamiento = () => {
     }
   }, []);
 
-  const fetchCitasByCliente = useCallback(async (clienteId) => {
+  const fetchCitasByCliente = useCallback(async (clienteAgendaId) => {
     setLoading(true);
     try {
-      const res = await scheduleApi.get(`/cliente/${clienteId}`);
+      const res = await scheduleApi.get(`/cliente/${clienteAgendaId}`);
       setCitas(res.data || []);
     } catch {
       setCitas([]);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const resolveClienteAgendaId = useCallback(async (user) => {
+    const email = user.email || `${user.username}@techfix.cl`;
+    try {
+      const res = await clientesApi.get(`/by-email/${encodeURIComponent(email)}`);
+      return res.data?.id || null;
+    } catch {
+      return null;
     }
   }, []);
 
@@ -62,11 +72,9 @@ export const useAgendamiento = () => {
     }
   }, []);
 
-  
   const crearCita = async (datos) => {
     setLoading(true);
     try {
-      
       let clienteId = datos.clienteAgendaId;
       if (!clienteId) {
         const clienteRes = await clientesApi.post('', {
@@ -78,17 +86,15 @@ export const useAgendamiento = () => {
         clienteId = clienteRes.data.id;
       }
 
-      
       const res = await scheduleApi.post('', {
         fechaHora: datos.fechaHora,
         tipoServicio: datos.tipoServicio || 'REPARACION',
         descripcion: datos.descripcion,
         clienteId,
-        tecnicoId: datos.tecnicoId,
       });
 
       toast.success('Cita agendada exitosamente');
-      return res.data;
+      return { ...res.data, clienteAgendaId: clienteId };
     } catch (error) {
       console.error('Error creando cita:', error);
       toast.error('No se pudo agendar la cita');
@@ -149,6 +155,7 @@ export const useAgendamiento = () => {
     fetchCitasByTecnico,
     fetchTecnicos,
     fetchClientes,
+    resolveClienteAgendaId,
     crearCita,
     actualizarEstado,
     eliminarCita,

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.beans.factory.annotation.Value;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -23,6 +24,9 @@ import java.util.List;
 public class AuthFilter implements GlobalFilter, Ordered {
 
     private final JwtValidator jwtValidator;
+
+    @Value("${internal.api.secret}")
+    private String internalApiSecret;
 
     @Override
     public int getOrder() {
@@ -36,21 +40,26 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
         log.debug("Gateway request: {} {}", method, path);
 
+        ServerHttpRequest requestWithSecret = exchange.getRequest().mutate()
+                .header("X-Internal-Secret", internalApiSecret)
+                .build();
+        ServerWebExchange exchangeWithSecret = exchange.mutate().request(requestWithSecret).build();
+
         if (isPublicRoute(path, method)) {
-            return chain.filter(exchange);
+            return chain.filter(exchangeWithSecret);
         }
 
-        String authorization = exchange.getRequest().getHeaders().getFirst("Authorization");
+        String authorization = exchangeWithSecret.getRequest().getHeaders().getFirst("Authorization");
 
         if (authorization == null || authorization.isBlank() || !authorization.startsWith("Bearer ")) {
-            return respondError(exchange, HttpStatus.UNAUTHORIZED,
+            return respondError(exchangeWithSecret, HttpStatus.UNAUTHORIZED,
                     "{\"error\":\"Authentication required\",\"message\":\"Missing or invalid Authorization header\"}");
         }
 
         String token = authorization.substring(7);
 
         if (!jwtValidator.isValid(token)) {
-            return respondError(exchange, HttpStatus.UNAUTHORIZED,
+            return respondError(exchangeWithSecret, HttpStatus.UNAUTHORIZED,
                     "{\"error\":\"Unauthorized\",\"message\":\"Token inválido o expirado\"}");
         }
 
@@ -60,23 +69,23 @@ public class AuthFilter implements GlobalFilter, Ordered {
         String username = claims.get("username", String.class);
 
         if (requiresAdmin(path, method) && !"ADMIN".equals(role)) {
-            return respondError(exchange, HttpStatus.FORBIDDEN,
+            return respondError(exchangeWithSecret, HttpStatus.FORBIDDEN,
                     "{\"error\":\"Forbidden\",\"message\":\"Admin access required\"}");
         }
 
         if (requiresStaff(path, method) && !"ADMIN".equals(role) && !"TECNICO".equals(role)) {
-            return respondError(exchange, HttpStatus.FORBIDDEN,
+            return respondError(exchangeWithSecret, HttpStatus.FORBIDDEN,
                     "{\"error\":\"Forbidden\",\"message\":\"Staff access required (ADMIN or TECNICO)\"}");
         }
 
-        ServerHttpRequest mutated = exchange.getRequest().mutate()
+        ServerHttpRequest mutated = exchangeWithSecret.getRequest().mutate()
                 .header("X-User-Id", userId)
                 .header("X-User-Role", role)
                 .header("X-User-Username", username)
                 .build();
 
         log.debug("Auth OK → user={} role={} → {}", username, role, path);
-        return chain.filter(exchange.mutate().request(mutated).build());
+        return chain.filter(exchangeWithSecret.mutate().request(mutated).build());
     }
 
     private boolean isPublicRoute(String path, String method) {
@@ -103,18 +112,22 @@ public class AuthFilter implements GlobalFilter, Ordered {
         if (path.startsWith("/gateway/users") && !path.contains("/username/")
                 && List.of("GET", "DELETE", "PATCH", "PUT").contains(method))
             return true;
-        if (path.equals("/gateway/pagos/carrito/todas"))
-            return true;
         if (path.startsWith("/gateway/pagos") && !path.startsWith("/gateway/pagos/carrito"))
             return true;
         if (path.startsWith("/gateway/stock")
-                && List.of("POST", "PUT", "DELETE", "PATCH").contains(method))
+                && List.of("PUT", "DELETE", "PATCH").contains(method))
+            return true;
+        if (path.startsWith("/gateway/stock") && "POST".equals(method)
+                && !path.endsWith("/movements"))
             return true;
         return false;
     }
 
     private boolean requiresStaff(String path, String method) {
-        if (path.startsWith("/gateway/citas") && "PATCH".equals(method))
+        if (path.equals("/gateway/pagos/carrito/todas"))
+            return true;
+        if (path.startsWith("/gateway/citas") && "PATCH".equals(method)
+                && !path.endsWith("/marcar-pagado"))
             return true;
         if (path.startsWith("/gateway/citas") && "DELETE".equals(method))
             return true;

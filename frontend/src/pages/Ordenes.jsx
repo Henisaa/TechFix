@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAgendamiento } from '../hooks/useAgendamiento';
+import { useCarritoApi } from '../hooks/useCarritoApi';
 import { useAuth } from '../context/AuthContext';
 import { scheduleApi } from '../services/api';
 import toast from 'react-hot-toast';
 import {
   FiActivity, FiRefreshCw, FiSearch, FiCheckCircle, FiDollarSign,
-  FiTool, FiXCircle, FiDownload, FiHash,
+  FiTool, FiXCircle, FiDownload, FiHash, FiShoppingBag, FiPackage,
 } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 
@@ -57,10 +58,14 @@ const METODOS_CITA = [
 const Ordenes = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { citas, loading, fetchTodasCitas, fetchCitasByCliente, actualizarEstado, gestionarServicio } = useAgendamiento();
+  const { citas, loading, fetchTodasCitas, fetchCitasByCliente, actualizarEstado, gestionarServicio, resolveClienteAgendaId } = useAgendamiento();
+  const { verOrdenesPorCliente, fetchTodasOrdenes } = useCarritoApi();
 
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('ALL');
+  const [activeTab, setActiveTab] = useState('servicios');
+  const [ordenesCarrito, setOrdenesCarrito] = useState([]);
+  const [loadingCarrito, setLoadingCarrito] = useState(false);
 
   const [gestionModal, setGestionModal] = useState(null);
   const [gestionForm, setGestionForm] = useState({ precio: '', descripcionRealizado: '', metodoPago: 'EFECTIVO' });
@@ -71,8 +76,14 @@ const Ordenes = () => {
     if (!user) return;
     if (user.role === 'ADMIN' || user.role === 'TECNICO') {
       fetchTodasCitas();
+      setLoadingCarrito(true);
+      fetchTodasOrdenes().then(data => { setOrdenesCarrito(data || []); setLoadingCarrito(false); });
     } else {
-      fetchCitasByCliente(user.id);
+      resolveClienteAgendaId(user).then(id => {
+        if (id) fetchCitasByCliente(id);
+      });
+      setLoadingCarrito(true);
+      verOrdenesPorCliente(user.id).then(data => { setOrdenesCarrito(data || []); setLoadingCarrito(false); });
     }
   }, [user, fetchTodasCitas, fetchCitasByCliente]);
 
@@ -80,7 +91,7 @@ const Ordenes = () => {
     const result = await actualizarEstado(id, nuevoEstado);
     if (result) {
       if (user.role === 'ADMIN' || user.role === 'TECNICO') fetchTodasCitas();
-      else fetchCitasByCliente(user.id);
+      else resolveClienteAgendaId(user).then(agendaId => { if (agendaId) fetchCitasByCliente(agendaId); });
     }
   };
 
@@ -107,7 +118,7 @@ const Ordenes = () => {
     if (result) {
       setGestionModal(null);
       if (user.role === 'ADMIN' || user.role === 'TECNICO') fetchTodasCitas();
-      else fetchCitasByCliente(user.id);
+      else resolveClienteAgendaId(user).then(agendaId => { if (agendaId) fetchCitasByCliente(agendaId); });
     }
   };
 
@@ -117,7 +128,7 @@ const Ordenes = () => {
       await scheduleApi.patch(`/${citaId}/marcar-pagado`);
       toast.success('✅ Pago en efectivo confirmado');
       if (user.role === 'ADMIN' || user.role === 'TECNICO') fetchTodasCitas();
-      else fetchCitasByCliente(user.id);
+      else resolveClienteAgendaId(user).then(agendaId => { if (agendaId) fetchCitasByCliente(agendaId); });
     } catch {
       toast.error('No se pudo confirmar el pago');
     } finally {
@@ -216,7 +227,7 @@ const Ordenes = () => {
           <button
             onClick={() => {
               if (isStaff) fetchTodasCitas();
-              else fetchCitasByCliente(user.id);
+              else resolveClienteAgendaId(user).then(id => { if (id) fetchCitasByCliente(id); });
             }}
             className="text-slate-500 hover:text-primary transition-colors"
           >
@@ -248,7 +259,25 @@ const Ordenes = () => {
         </select>
       </div>
 
-      {!isStaff && citasFiltradas.length > 0 && (
+      <div className="flex border-b border-slate-200 mb-6 gap-1">
+        <button
+          onClick={() => setActiveTab('servicios')}
+          className={`px-5 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
+            activeTab === 'servicios' ? 'border-b-2 border-primary text-primary' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <FiTool className="text-sm" /> Servicios Técnicos
+        </button>
+        <button
+          onClick={() => setActiveTab('compras')}
+          className={`px-5 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
+            activeTab === 'compras' ? 'border-b-2 border-primary text-primary' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <FiShoppingBag className="text-sm" /> {isStaff ? 'Compras de Clientes' : 'Mis Compras'} ({ordenesCarrito.length})
+        </button>
+      </div>
+      {!isStaff && citasFiltradas.length > 0 && activeTab === 'servicios' && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 mb-8">
           <h2 className="text-lg font-bold text-slate-800 mb-8 text-center">
             Estado de tu Solicitud más Reciente — #{citasFiltradas[0].id}
@@ -276,12 +305,88 @@ const Ordenes = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-slate-400">
-            <FiRefreshCw className="animate-spin mr-3 text-xl" /> Cargando órdenes...
-          </div>
-        ) : citasFiltradas.length === 0 ? (
+      {activeTab === 'compras' ? (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          {loadingCarrito ? (
+            <div className="flex items-center justify-center py-16 text-slate-400">
+              <FiRefreshCw className="animate-spin mr-3 text-xl" /> Cargando compras...
+            </div>
+          ) : ordenesCarrito.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-5xl mb-4">🛒</div>
+              <p className="text-slate-500">Aún no hay compras registradas.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID Orden</th>
+                    {isStaff && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cliente</th>
+                    )}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Fecha</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Productos</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Método</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Total</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {ordenesCarrito.map((orden) => (
+                    <tr key={orden.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-bold text-primary font-mono">#{orden.id}</span>
+                      </td>
+                      {isStaff && (
+                        <td className="px-6 py-4 text-sm text-slate-600">
+                          {orden.clienteUsername || `ID: ${orden.clienteId}`}
+                        </td>
+                      )}
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {orden.createdAt ? new Date(orden.createdAt).toLocaleString('es-CL') : '—'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          {(orden.items || []).map((item, i) => (
+                            <div key={i} className="flex items-center gap-2 text-xs">
+                              <FiPackage className="text-slate-400 flex-shrink-0" />
+                              <span className="text-slate-700 font-medium">{item.nombreProducto}</span>
+                              <span className="text-slate-400">×{item.cantidad}</span>
+                              <span className="text-slate-500">
+                                {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(item.precioUnitario)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">{orden.metodoPago || '—'}</td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-bold text-slate-900">
+                          {new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(orden.montoTotal || 0)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                          orden.estadoOrden === 'PAGADO' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {orden.estadoOrden || 'PENDIENTE'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-slate-400">
+              <FiRefreshCw className="animate-spin mr-3 text-xl" /> Cargando órdenes...
+            </div>
+          ) : citasFiltradas.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-5xl mb-4">📋</div>
             <p className="text-slate-500">No hay órdenes para mostrar.</p>
@@ -354,13 +459,10 @@ const Ordenes = () => {
                               {formatPrice(cita.precioCotizado)} — Pagar en efectivo
                             </span>
                           ) : (
-                            <button
-                              onClick={() => navigate(`/pago-ticket/${cita.id}`)}
-                              className="inline-flex items-center gap-1.5 bg-primary hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm hover:shadow-md"
-                            >
+                            <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200">
                               <FiDollarSign className="text-xs" />
-                              Pagar {cita.precioCotizado ? formatPrice(cita.precioCotizado) : ''}
-                            </button>
+                              Pendiente de pago {cita.precioCotizado ? formatPrice(cita.precioCotizado) : ''}
+                            </span>
                           )
                         ) : cita.estadoPagoTicket === 'PENDIENTE_PAGO' && isStaff ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">
@@ -417,6 +519,7 @@ const Ordenes = () => {
           </div>
         )}
       </div>
+    )}
 
       {gestionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">

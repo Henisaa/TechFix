@@ -28,6 +28,11 @@ public class ClienteController {
         return ResponseEntity.ok(clienteService.findById(id));
     }
 
+    @GetMapping("/by-email/{email}")
+    public ResponseEntity<ClienteResponse> getByEmail(@PathVariable String email) {
+        return ResponseEntity.ok(clienteService.findByEmail(email));
+    }
+
     @PostMapping
     public ResponseEntity<ClienteResponse> create(@Valid @RequestBody ClienteRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(clienteService.create(request));

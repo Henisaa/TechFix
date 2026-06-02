@@ -2,8 +2,8 @@ package com.techfix.agenda.service.impl;
 
 import com.techfix.agenda.dto.ClienteRequest;
 import com.techfix.agenda.dto.ClienteResponse;
-import com.techfix.agenda.exception.BusinessException;
 import com.techfix.agenda.exception.ResourceNotFoundException;
+import com.techfix.agenda.exception.BusinessException;
 import com.techfix.agenda.mapper.ClienteMapper;
 import com.techfix.agenda.model.Cliente;
 import com.techfix.agenda.repository.ClienteRepository;
@@ -38,11 +38,21 @@ public class ClienteServiceImpl implements ClienteService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ClienteResponse findByEmail(String email) {
+        return clienteRepository.findByEmail(email)
+                .map(clienteMapper::toResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente", 0L));
+    }
+
+    @Override
     public ClienteResponse create(ClienteRequest request) {
         if (request.getEmail() != null && clienteRepository.existsByEmail(request.getEmail())) {
-            throw new BusinessException("Ya existe un cliente con el email: " + request.getEmail());
+            return clienteMapper.toResponse(clienteRepository.findByEmail(request.getEmail()).get());
         }
-        Cliente saved = clienteRepository.save(clienteMapper.toEntity(request));
+        Cliente entity = clienteMapper.toEntity(request);
+        if (entity.getApellido() == null) entity.setApellido("");
+        Cliente saved = clienteRepository.save(entity);
         return clienteMapper.toResponse(saved);
     }
 

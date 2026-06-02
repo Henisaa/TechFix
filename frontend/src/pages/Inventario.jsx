@@ -202,7 +202,7 @@ const Inventario = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-semibold text-slate-900">
-                      ${formatPrice(p.salePrice)}
+                      {formatPrice(p.salePrice)}
                     </td>
                     {isAdmin && (
                       <td className="px-6 py-4 text-right">

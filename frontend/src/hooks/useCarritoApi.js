@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { paymentApi } from '../services/api';
+import { paymentApi, inventoryApi } from '../services/api';
 import toast from 'react-hot-toast';
 
 
@@ -21,6 +21,25 @@ export const useCarritoApi = () => {
 
       const response = await paymentApi.post('/carrito/nuevo', payload);
       const orden = response.data;
+
+      try {
+        await Promise.all(
+          items.map(item => 
+            inventoryApi.post('/movements', {
+              productId: item.productoId,
+              movementType: 'SALE',
+              quantity: item.cantidad,
+              unitCost: item.precioUnitario,
+              reference: `Orden de Carrito #${orden.id}`,
+              notes: 'Venta online',
+              createdBy: clienteId ? clienteId.toString() : 'cliente'
+            })
+          )
+        );
+      } catch (err) {
+        console.error('Error al registrar salida de stock', err);
+      }
+
       setOrdenActiva(orden);
       toast.success('¡Compra realizada exitosamente! 🎉');
       return orden;

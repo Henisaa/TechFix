@@ -26,6 +26,7 @@ const Agendamiento = () => {
     fetchCitasByCliente,
     fetchCitasByTecnico,
     fetchTecnicos,
+    resolveClienteAgendaId,
     crearCita,
     actualizarEstado,
     eliminarCita,
@@ -41,7 +42,6 @@ const Agendamiento = () => {
     descripcion: '',
     fecha: '',
     hora: '10:00',
-    tecnicoId: '',
   });
 
   
@@ -57,13 +57,15 @@ const Agendamiento = () => {
     if (isStaff) {
       fetchTodasCitas();
     } else {
-      fetchCitasByCliente(user.id);
+      resolveClienteAgendaId(user).then(id => {
+        if (id) fetchCitasByCliente(id);
+      });
     }
   }, [user]);
 
   const handleRefresh = () => {
     if (isStaff) fetchTodasCitas();
-    else fetchCitasByCliente(user.id);
+    else resolveClienteAgendaId(user).then(id => { if (id) fetchCitasByCliente(id); });
   };
 
   const handleSubmit = async (e) => {
@@ -77,15 +79,15 @@ const Agendamiento = () => {
       tipoServicio: formData.tipoServicio,
       descripcion: formData.descripcion,
       fechaHora,
-      tecnicoId: formData.tecnicoId ? parseInt(formData.tecnicoId) : null,
     });
     if (result) {
       setFormData({
         nombre: '', apellido: '', email: '', telefono: '',
         tipoServicio: 'REPARACION', descripcion: '',
-        fecha: '', hora: '10:00', tecnicoId: '',
+        fecha: '', hora: '10:00',
       });
-      fetchCitasByCliente(user.id);
+      const clienteAgendaId = result.clienteAgendaId;
+      if (clienteAgendaId) fetchCitasByCliente(clienteAgendaId);
       setActiveTab('mis-citas');
     }
   };
@@ -239,24 +241,6 @@ const Agendamiento = () => {
                   onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Técnico Asignado (Opcional)
-              </label>
-              <select
-                className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-                value={formData.tecnicoId}
-                onChange={(e) => setFormData({ ...formData, tecnicoId: e.target.value })}
-              >
-                <option value="">— Selecciona un técnico o deja que se asigne luego —</option>
-                {tecnicos.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nombre} {t.apellido}
-                  </option>
-                ))}
-              </select>
             </div>
 
             <button

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { paymentApi } from '../services/api';
+import { paymentApi, scheduleApi } from '../services/api';
 import toast from 'react-hot-toast';
 
 
@@ -72,6 +72,15 @@ export const usePagos = () => {
     setLoading(true);
     try {
       const response = await paymentApi.put(`/alterar/${id}`, pagoData);
+      
+      if (pagoData.estadoPago === 'PAGADO' && pagoData.idVisitaTecnica) {
+        try {
+          await scheduleApi.patch(`/${pagoData.idVisitaTecnica}/marcar-pagado`);
+        } catch (e) {
+          console.error("Error sincronizando pago con agenda", e);
+        }
+      }
+
       toast.success('Pago actualizado correctamente');
       setPagoActivo(response.data);
       return response.data;

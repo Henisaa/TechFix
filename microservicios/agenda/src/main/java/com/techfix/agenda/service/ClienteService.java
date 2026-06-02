@@ -11,6 +11,8 @@ public interface ClienteService {
 
     ClienteResponse findById(Long id);
 
+    ClienteResponse findByEmail(String email);
+
     ClienteResponse create(ClienteRequest request);
 
     ClienteResponse update(Long id, ClienteRequest request);

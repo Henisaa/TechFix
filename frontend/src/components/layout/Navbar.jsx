@@ -15,14 +15,19 @@ const Navbar = () => {
     navigate('/');
   };
 
+  const isStaff = user?.role === 'ADMIN' || user?.role === 'TECNICO';
+
   const navLinks = [
     { name: 'Inicio', path: '/' },
     { name: 'Catálogo', path: '/catalogo' },
     { name: 'Agendamiento', path: '/agendamiento' },
     { name: 'Mis Órdenes', path: '/ordenes' },
-    { name: 'Inventario', path: '/inventario' },
-    { name: 'Pagos', path: '/pagos' },
   ];
+
+  if (isStaff) {
+    navLinks.push({ name: 'Inventario', path: '/inventario' });
+    navLinks.push({ name: 'Pagos', path: '/pagos' });
+  }
 
   if (user?.role === 'ADMIN') {
     navLinks.push({ name: 'Usuarios', path: '/usuarios' });

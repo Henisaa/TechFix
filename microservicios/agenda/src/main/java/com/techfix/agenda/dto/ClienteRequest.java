@@ -10,7 +10,6 @@ public class ClienteRequest {
     @NotBlank(message = "El nombre es obligatorio")
     private String nombre;
 
-    @NotBlank(message = "El apellido es obligatorio")
     private String apellido;
 
     @Email(message = "El email no es válido")
