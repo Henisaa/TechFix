@@ -338,7 +338,7 @@ const Agendamiento = () => {
                                 <FiCheckCircle className="inline" /> Completar
                               </button>
                             )}
-                            {cita.estado === 'COMPLETADA' && !cita.estadoPagoTicket && (
+                            {cita.estado === 'COMPLETADA' && (cita.estadoPagoTicket === 'SIN_PRECIO' || !cita.estadoPagoTicket) && (
                               <button
                                 onClick={() => handleAbrirPrecioModal(cita)}
                                 className="flex items-center gap-1 text-primary hover:text-blue-700 text-sm font-medium"

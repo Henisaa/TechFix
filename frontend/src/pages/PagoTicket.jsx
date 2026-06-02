@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { scheduleApi } from '../services/api';
+import { scheduleApi, paymentApi } from '../services/api';
 import toast from 'react-hot-toast';
 import CardPaymentForm from '../components/ui/CardPaymentForm';
 import {
@@ -70,6 +70,22 @@ const PagoTicket = () => {
 
     setLoadingPago(true);
     try {
+      const response = await paymentApi.post(`/nuevo/${citaId}`, {
+        idVisitaTecnica: parseInt(citaId),
+        monto: parseFloat(cita.precioCotizado),
+        metodoPago: cita.metodoPago,
+        referenciaExterna: cardData.masked,
+        descripcion: `Pago en línea de servicio técnico - Ticket #${cita.id}`
+      }, {
+        headers: {
+          'Idempotency-Key': crypto.randomUUID()
+        }
+      });
+      const nuevoPago = response.data;
+      await paymentApi.put(`/alterar/${nuevoPago.id}`, {
+        ...nuevoPago,
+        estadoPago: 'PAGADO'
+      });
       const res = await scheduleApi.patch(`/${citaId}/marcar-pagado`);
       setCita(res.data);
       setPagado(true);

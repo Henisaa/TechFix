@@ -58,7 +58,7 @@ function App() {
             <Route
               path="/pago-ticket/:citaId"
               element={
-                <ProtectedRoute allowedRoles={["TECNICO", "ADMIN"]}>
+                <ProtectedRoute>
                   <PagoTicket />
                 </ProtectedRoute>
               }

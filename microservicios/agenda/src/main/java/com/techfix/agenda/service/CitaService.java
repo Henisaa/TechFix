@@ -31,5 +31,7 @@ public interface CitaService {
 
     CitaResponse gestionarServicio(Long id, GestionServicioRequest request);
 
+    CitaResponse cancelarCliente(Long id, com.techfix.agenda.dto.CancelarCitaClienteRequest request);
+
     void delete(Long id);
 }

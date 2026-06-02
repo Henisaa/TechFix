@@ -5,6 +5,7 @@ import com.techfix.agenda.dto.CitaResponse;
 import com.techfix.agenda.dto.EstadoUpdateRequest;
 import com.techfix.agenda.dto.GestionServicioRequest;
 import com.techfix.agenda.dto.PrecioTicketRequest;
+import com.techfix.agenda.dto.CancelarCitaClienteRequest;
 import com.techfix.agenda.model.EstadoCita;
 import com.techfix.agenda.service.CitaService;
 import jakarta.validation.Valid;
@@ -12,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -76,6 +76,13 @@ public class CitaController {
             @PathVariable Long id,
             @Valid @RequestBody GestionServicioRequest request) {
         return ResponseEntity.ok(citaService.gestionarServicio(id, request));
+    }
+
+    @PatchMapping("/{id}/cancelar-cliente")
+    public ResponseEntity<CitaResponse> cancelarCliente(
+            @PathVariable Long id,
+            @Valid @RequestBody CancelarCitaClienteRequest request) {
+        return ResponseEntity.ok(citaService.cancelarCliente(id, request));
     }
 
     @DeleteMapping("/{id}")

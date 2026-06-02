@@ -145,6 +145,21 @@ export const useAgendamiento = () => {
     }
   };
 
+  const cancelarCitaCliente = async (id, motivo) => {
+    setLoading(true);
+    try {
+      const res = await scheduleApi.patch(`/${id}/cancelar-cliente`, { motivo });
+      toast.success('Servicio cancelado exitosamente');
+      return res.data;
+    } catch (error) {
+      const msg = error?.response?.data?.message || 'No se pudo cancelar el servicio';
+      toast.error(msg);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     citas,
     clientes,
@@ -160,5 +175,6 @@ export const useAgendamiento = () => {
     actualizarEstado,
     eliminarCita,
     gestionarServicio,
+    cancelarCitaCliente,
   };
 };

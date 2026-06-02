@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import {
   FiActivity, FiRefreshCw, FiSearch, FiCheckCircle, FiDollarSign,
   FiTool, FiXCircle, FiDownload, FiHash, FiShoppingBag, FiPackage,
+  FiCreditCard,
 } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 
@@ -58,7 +59,7 @@ const METODOS_CITA = [
 const Ordenes = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { citas, loading, fetchTodasCitas, fetchCitasByCliente, actualizarEstado, gestionarServicio, resolveClienteAgendaId } = useAgendamiento();
+  const { citas, loading, fetchTodasCitas, fetchCitasByCliente, actualizarEstado, gestionarServicio, resolveClienteAgendaId, cancelarCitaCliente } = useAgendamiento();
   const { verOrdenesPorCliente, fetchTodasOrdenes } = useCarritoApi();
 
   const [busqueda, setBusqueda] = useState('');
@@ -71,6 +72,9 @@ const Ordenes = () => {
   const [gestionForm, setGestionForm] = useState({ precio: '', descripcionRealizado: '', metodoPago: 'EFECTIVO' });
   const [confirmCancelar, setConfirmCancelar] = useState(false);
   const [loadingEfectivo, setLoadingEfectivo] = useState(false);
+  const [cancelarClienteModal, setCancelarClienteModal] = useState(null);
+  const [cancelarClienteForm, setCancelarClienteForm] = useState({ motivo: '' });
+  const [detalleModal, setDetalleModal] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -133,6 +137,18 @@ const Ordenes = () => {
       toast.error('No se pudo confirmar el pago');
     } finally {
       setLoadingEfectivo(false);
+    }
+  };
+
+  const handleCancelarCliente = async (e) => {
+    e.preventDefault();
+    if (!cancelarClienteModal || !cancelarClienteForm.motivo.trim()) return;
+    const result = await cancelarCitaCliente(cancelarClienteModal.id, cancelarClienteForm.motivo.trim());
+    if (result) {
+      setCancelarClienteModal(null);
+      setCancelarClienteForm({ motivo: '' });
+      if (user.role === 'ADMIN' || user.role === 'TECNICO') fetchTodasCitas();
+      else resolveClienteAgendaId(user).then(agendaId => { if (agendaId) fetchCitasByCliente(agendaId); });
     }
   };
 
@@ -404,9 +420,7 @@ const Ordenes = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Fecha</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Estado</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Precio / Pago</th>
-                  {isStaff && (
-                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Acciones</th>
-                  )}
+                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
@@ -417,7 +431,14 @@ const Ordenes = () => {
                   const esEfectivoPendiente = isStaff && cita.estadoPagoTicket === 'PENDIENTE_PAGO' && cita.metodoPago === 'EFECTIVO';
 
                   return (
-                    <tr key={cita.id} className="hover:bg-slate-50 transition-colors">
+                    <tr
+                      key={cita.id}
+                      onClick={(e) => {
+                        if (e.target.closest('button') || e.target.closest('select') || e.target.closest('option')) return;
+                        setDetalleModal(cita);
+                      }}
+                      className="hover:bg-slate-50 transition-colors cursor-pointer"
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1.5">
                           <FiHash className="text-slate-400 text-xs" />
@@ -459,10 +480,18 @@ const Ordenes = () => {
                               {formatPrice(cita.precioCotizado)} — Pagar en efectivo
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200">
-                              <FiDollarSign className="text-xs" />
-                              Pendiente de pago {cita.precioCotizado ? formatPrice(cita.precioCotizado) : ''}
-                            </span>
+                            <div className="flex flex-col gap-1.5 items-start">
+                              <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200">
+                                <FiDollarSign className="text-xs" />
+                                Pendiente de pago {cita.precioCotizado ? formatPrice(cita.precioCotizado) : ''}
+                              </span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); navigate(`/pago-ticket/${cita.id}`); }}
+                                className="inline-flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm cursor-pointer"
+                              >
+                                <FiCreditCard className="text-xs" /> Pagar en línea
+                              </button>
+                            </div>
                           )
                         ) : cita.estadoPagoTicket === 'PENDIENTE_PAGO' && isStaff ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">
@@ -474,43 +503,60 @@ const Ordenes = () => {
                           <span className="text-xs text-slate-400">—</span>
                         )}
                       </td>
-                      {isStaff && (
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2 items-center flex-wrap">
-                            {esEfectivoPendiente && (
-                              <button
-                                disabled={loadingEfectivo}
-                                onClick={() => handleConfirmarEfectivo(cita.id)}
-                                className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
-                              >
-                                <FiCheckCircle className="text-xs" /> Confirmar efectivo
-                              </button>
-                            )}
-                            {puedeGestionar && (
-                              <button
-                                onClick={() => openGestion(cita)}
-                                className="inline-flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
-                              >
-                                <FiTool className="text-xs" /> Gestionar
-                              </button>
-                            )}
-                            {!esCancelada && !esCompletada && cita.estadoPagoTicket !== 'PENDIENTE_PAGO' && (
-                              <select
-                                className="text-sm border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-primary bg-white"
-                                value={cita.estado || 'PENDIENTE'}
-                                onChange={(e) => handleEstado(cita.id, e.target.value)}
-                              >
-                                {ESTADOS.map((e) => (
-                                  <option key={e} value={e}>{e}</option>
-                                ))}
-                              </select>
-                            )}
-                            {(esCancelada || esCompletada) && !esEfectivoPendiente && (
-                              <span className="text-xs text-slate-400 italic">Sin acciones</span>
-                            )}
-                          </div>
-                        </td>
-                      )}
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2 items-center flex-wrap">
+                          {isStaff && esEfectivoPendiente && (
+                            <button
+                              disabled={loadingEfectivo}
+                              onClick={(e) => { e.stopPropagation(); handleConfirmarEfectivo(cita.id); }}
+                              className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                            >
+                              <FiCheckCircle className="text-xs" /> Confirmar efectivo
+                            </button>
+                          )}
+                          {isStaff && puedeGestionar && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openGestion(cita); }}
+                              className="inline-flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                            >
+                              <FiTool className="text-xs" /> Gestionar
+                            </button>
+                          )}
+                          {isStaff && esCompletada && (cita.estadoPagoTicket === 'SIN_PRECIO' || !cita.estadoPagoTicket) && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openGestion(cita); }}
+                              className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                            >
+                              <FiDollarSign className="text-xs" /> Asignar Precio
+                            </button>
+                          )}
+                          {isStaff && !esCancelada && !esCompletada && cita.estadoPagoTicket !== 'PENDIENTE_PAGO' && (
+                            <select
+                              className="text-sm border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-primary bg-white"
+                              value={cita.estado || 'PENDIENTE'}
+                              onChange={(e) => { e.stopPropagation(); handleEstado(cita.id, e.target.value); }}
+                            >
+                              {ESTADOS.map((e) => (
+                                <option key={e} value={e}>{e}</option>
+                              ))}
+                            </select>
+                          )}
+                          {!isStaff && !esCancelada && !esCompletada && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setCancelarClienteModal(cita); }}
+                              className="inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm cursor-pointer"
+                            >
+                              <FiXCircle className="text-xs" /> Cancelar Orden
+                            </button>
+                          )}
+                          {isStaff && (esCancelada || (esCompletada && cita.estadoPagoTicket !== 'SIN_PRECIO' && cita.estadoPagoTicket)) && !esEfectivoPendiente && (
+                            <span className="text-xs text-slate-400 italic">Sin acciones</span>
+                          )}
+                          {!isStaff && (esCancelada || esCompletada) && (
+                            <span className="text-xs text-slate-400 italic">Sin acciones</span>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -636,6 +682,136 @@ const Ordenes = () => {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancelarClienteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <FiXCircle className="text-red-600" /> Cancelar Orden de Servicio
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Orden {cancelarClienteModal.numeroOrden || `#${cancelarClienteModal.id}`}</p>
+              </div>
+              <button onClick={() => { setCancelarClienteModal(null); setCancelarClienteForm({ motivo: '' }); }} className="text-slate-400 hover:text-slate-600 text-2xl font-bold">×</button>
+            </div>
+            <form onSubmit={handleCancelarCliente} className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Motivo de Cancelación *</label>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="Por favor, escribe el motivo de la cancelación de tu orden..."
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm resize-none"
+                  value={cancelarClienteForm.motivo}
+                  onChange={(e) => setCancelarClienteForm({ motivo: e.target.value })}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setCancelarClienteModal(null); setCancelarClienteForm({ motivo: '' }); }}
+                  className="flex-1 px-4 py-2.5 text-slate-600 font-medium border border-slate-300 rounded-xl text-sm hover:bg-slate-50 transition-colors"
+                >
+                  Volver
+                </button>
+                <button
+                  type="submit"
+                  disabled={!cancelarClienteForm.motivo.trim() || loading}
+                  className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all shadow-md"
+                >
+                  <FiXCircle /> Confirmar Cancelación
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {detalleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <FiTool className="text-primary" /> Detalle de la Orden
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Orden {detalleModal.numeroOrden || `#${detalleModal.id}`}</p>
+              </div>
+              <button onClick={() => setDetalleModal(null)} className="text-slate-400 hover:text-slate-600 text-2xl font-bold">×</button>
+            </div>
+            <div className="p-6 space-y-4 text-sm text-slate-700">
+              <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-100">
+                <div>
+                  <p className="text-slate-400 text-xs uppercase font-semibold">Cliente</p>
+                  <p className="font-semibold text-slate-800">{detalleModal.nombre || (detalleModal.cliente ? `${detalleModal.cliente.nombre} ${detalleModal.cliente.apellido || ''}`.trim() : `Cliente #${detalleModal.clienteId}`)}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-xs uppercase font-semibold">Técnico Asignado</p>
+                  <p className="font-semibold text-slate-800">{detalleModal.tecnico ? `${detalleModal.tecnico.nombre} ${detalleModal.tecnico.apellido || ''}`.trim() : 'Sin asignar'}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-xs uppercase font-semibold">Fecha Solicitada</p>
+                  <p className="font-medium">{detalleModal.fechaSolicitada || detalleModal.fecha || (detalleModal.fechaHora ? detalleModal.fechaHora.slice(0, 10) : '—')}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-xs uppercase font-semibold">Estado de la Orden</p>
+                  <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${ESTADO_COLORS[detalleModal.estado] || 'bg-slate-100 text-slate-700'}`}>
+                    {detalleModal.estado || 'PENDIENTE'}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-slate-400 text-xs uppercase font-semibold mb-1">Servicio y Descripción</p>
+                <p className="font-semibold text-slate-800">{detalleModal.tipoEquipo || detalleModal.tipoServicio}</p>
+                <p className="mt-1 text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">{detalleModal.descripcionProblema || detalleModal.descripcion || 'Sin descripción de problema'}</p>
+              </div>
+              {detalleModal.precioCotizado && (
+                <div className="pb-4 border-b border-slate-100">
+                  <p className="text-slate-400 text-xs uppercase font-semibold">Detalle de Pago</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="font-semibold text-slate-800">
+                      Monto Cotizado: {formatPrice(detalleModal.precioCotizado)}
+                    </span>
+                    <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                      detalleModal.estadoPagoTicket === 'PAGADO' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {detalleModal.estadoPagoTicket === 'PAGADO' ? 'PAGADO' : 'PENDIENTE DE PAGO'}
+                    </span>
+                  </div>
+                  {detalleModal.metodoPago && (
+                    <p className="text-xs text-slate-500 mt-1">Método: {detalleModal.metodoPago === 'EFECTIVO' ? '💵 Efectivo' : '💳 Tarjeta'}</p>
+                  )}
+                </div>
+              )}
+              {detalleModal.estado === 'CANCELADA' && detalleModal.descripcionRealizado && (
+                <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl">
+                  <p className="font-bold text-xs uppercase text-red-700 flex items-center gap-1.5 mb-1">
+                    <FiXCircle /> Motivo de Cancelación
+                  </p>
+                  <p className="font-medium">{detalleModal.descripcionRealizado}</p>
+                </div>
+              )}
+              {detalleModal.estado === 'COMPLETADA' && detalleModal.descripcionRealizado && (
+                <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl">
+                  <p className="font-bold text-xs uppercase text-green-700 flex items-center gap-1.5 mb-1">
+                    <FiCheckCircle /> Trabajo Realizado
+                  </p>
+                  <p className="font-medium">{detalleModal.descripcionRealizado}</p>
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button
+                onClick={() => setDetalleModal(null)}
+                className="bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 px-6 rounded-xl transition-all"
+              >
+                Cerrar
+              </button>
             </div>
           </div>
         </div>

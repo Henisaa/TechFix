@@ -116,6 +116,9 @@ public class CitaServiceImpl implements CitaService {
     @Override
     public CitaResponse updateEstado(Long id, EstadoUpdateRequest request) {
         Cita cita = getOrThrow(id);
+        if (cita.getEstado() == EstadoCita.CANCELADA) {
+            throw new BusinessException("El servicio técnico ha sido cancelado y no puede ser modificado.");
+        }
         cita.setEstado(request.getEstado());
         return citaMapper.toResponse(citaRepository.save(cita));
     }
@@ -123,6 +126,9 @@ public class CitaServiceImpl implements CitaService {
     @Override
     public CitaResponse asignarPrecio(Long id, PrecioTicketRequest request) {
         Cita cita = getOrThrow(id);
+        if (cita.getEstado() == EstadoCita.CANCELADA) {
+            throw new BusinessException("El servicio técnico ha sido cancelado y no puede ser modificado.");
+        }
         cita.setPrecioCotizado(request.getPrecioCotizado());
         cita.setEstadoPagoTicket("PENDIENTE_PAGO");
         return citaMapper.toResponse(citaRepository.save(cita));
@@ -131,6 +137,9 @@ public class CitaServiceImpl implements CitaService {
     @Override
     public CitaResponse marcarPagado(Long id) {
         Cita cita = getOrThrow(id);
+        if (cita.getEstado() == EstadoCita.CANCELADA) {
+            throw new BusinessException("El servicio técnico ha sido cancelado y no puede ser modificado.");
+        }
         if (!"PENDIENTE_PAGO".equals(cita.getEstadoPagoTicket())) {
             throw new BusinessException("El ticket no tiene un precio asignado o ya fue pagado.");
         }
@@ -142,6 +151,9 @@ public class CitaServiceImpl implements CitaService {
     @Override
     public CitaResponse gestionarServicio(Long id, GestionServicioRequest request) {
         Cita cita = getOrThrow(id);
+        if (cita.getEstado() == EstadoCita.CANCELADA) {
+            throw new BusinessException("El servicio técnico ha sido cancelado y no puede ser modificado.");
+        }
         String accion = request.getAccion();
 
         if ("CANCELAR".equalsIgnoreCase(accion)) {
@@ -168,6 +180,18 @@ public class CitaServiceImpl implements CitaService {
         }
 
         throw new BusinessException("Acción inválida. Use COMPLETAR o CANCELAR.");
+    }
+
+    @Override
+    public CitaResponse cancelarCliente(Long id, com.techfix.agenda.dto.CancelarCitaClienteRequest request) {
+        Cita cita = getOrThrow(id);
+        if (cita.getEstado() == EstadoCita.CANCELADA || cita.getEstado() == EstadoCita.COMPLETADA) {
+            throw new BusinessException("El servicio técnico ya se encuentra finalizado o cancelado.");
+        }
+        cita.setEstado(EstadoCita.CANCELADA);
+        cita.setEstadoPagoTicket("CANCELADO");
+        cita.setDescripcionRealizado(request.getMotivo());
+        return citaMapper.toResponse(citaRepository.save(cita));
     }
 
     @Override

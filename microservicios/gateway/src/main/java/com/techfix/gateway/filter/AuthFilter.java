@@ -112,7 +112,8 @@ public class AuthFilter implements GlobalFilter, Ordered {
         if (path.startsWith("/gateway/users") && !path.contains("/username/")
                 && List.of("GET", "DELETE", "PATCH", "PUT").contains(method))
             return true;
-        if (path.startsWith("/gateway/pagos") && !path.startsWith("/gateway/pagos/carrito"))
+        if (path.startsWith("/gateway/pagos") && !path.startsWith("/gateway/pagos/carrito")
+                && !path.contains("/nuevo") && !path.contains("/alterar") && !path.contains("/ver"))
             return true;
         if (path.startsWith("/gateway/stock")
                 && List.of("PUT", "DELETE", "PATCH").contains(method))
@@ -127,7 +128,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
         if (path.equals("/gateway/pagos/carrito/todas"))
             return true;
         if (path.startsWith("/gateway/citas") && "PATCH".equals(method)
-                && !path.endsWith("/marcar-pagado"))
+                && !path.contains("/marcar-pagado") && !path.contains("/cancelar-cliente"))
             return true;
         if (path.startsWith("/gateway/citas") && "DELETE".equals(method))
             return true;
