@@ -214,10 +214,7 @@ const CardPaymentForm = ({ onCardData, disabled }) => {
         </div>
       </div>
 
-      <p className="text-xs text-slate-400 flex items-center gap-1">
-        <FiLock className="text-xs" />
-        Simulación de pago — tus datos no se almacenan ni se realizan cargos
-      </p>
+    
     </div>
   );
 };

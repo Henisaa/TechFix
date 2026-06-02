@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -106,6 +107,7 @@ public class CitaServiceImpl implements CitaService {
                 .descripcion(request.getDescripcion())
                 .cliente(cliente)
                 .tecnico(tecnico)
+                .numeroOrden(generarNumeroOrden())
                 .build();
 
         return citaMapper.toResponse(citaRepository.save(cita));
@@ -196,5 +198,11 @@ public class CitaServiceImpl implements CitaService {
     private Cita getOrThrow(Long id) {
         return citaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Cita", id));
+    }
+
+    private String generarNumeroOrden() {
+        int anio = java.time.LocalDate.now().getYear();
+        int sufijo = new Random().nextInt(9000) + 1000;
+        return "TF-" + anio + "-" + sufijo;
     }
 }

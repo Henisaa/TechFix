@@ -1,3 +1,5 @@
+package com.techfix.agenda.controller;
+
 import com.techfix.agenda.dto.CitaRequest;
 import com.techfix.agenda.dto.CitaResponse;
 import com.techfix.agenda.dto.EstadoUpdateRequest;

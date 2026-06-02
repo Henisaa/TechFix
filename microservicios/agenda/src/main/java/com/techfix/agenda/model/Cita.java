@@ -22,6 +22,9 @@ public class Cita {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "numero_orden", unique = true, length = 20)
+    private String numeroOrden;
+
     @NotNull
     @Column(nullable = false)
     private LocalDateTime fechaHora;
@@ -48,7 +51,7 @@ public class Cita {
     @JoinColumn(name = "tecnico_id")
     private Tecnico tecnico;
 
-    // === Campos de Ticket de Soporte TI ===
+    
     @Column(name = "precio_cotizado", precision = 10, scale = 2)
     private BigDecimal precioCotizado;
 

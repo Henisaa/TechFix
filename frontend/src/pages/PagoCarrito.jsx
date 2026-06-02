@@ -13,22 +13,12 @@ const formatPrice = (price) =>
   new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(price ?? 0);
 
 const METODOS_PAGO = [
-  { value: 'EFECTIVO',        label: '💵 Efectivo' },
   { value: 'TARJETA_DEBITO',  label: '💳 Tarjeta de Débito' },
   { value: 'TARJETA_CREDITO', label: '💳 Tarjeta de Crédito' },
-  { value: 'TRANSFERENCIA',   label: '🏦 Transferencia' },
 ];
 
 const isCardMethod = (m) => m === 'TARJETA_DEBITO' || m === 'TARJETA_CREDITO';
 
-const getReferenciaInfo = (metodo) => {
-  switch (metodo) {
-    case 'TRANSFERENCIA':
-      return { label: 'Número de operación bancaria', placeholder: 'Ej: 123456789', required: true };
-    default:
-      return { label: 'Número de recibo (opcional)', placeholder: 'Se genera automáticamente si se deja vacío', required: false };
-  }
-};
 
 const PagoCarrito = () => {
   const navigate = useNavigate();
@@ -36,42 +26,31 @@ const PagoCarrito = () => {
   const { cart, updateQty, removeFromCart, clearCart, totalPrice } = useCart();
   const { confirmarOrden, loading } = useCarritoApi();
 
-  const [metodoPago, setMetodoPago] = useState('EFECTIVO');
-  const [referenciaExterna, setReferenciaExterna] = useState('');
+  const [metodoPago, setMetodoPago] = useState('TARJETA_DEBITO');
   const [ordenConfirmada, setOrdenConfirmada] = useState(null);
   const [cardData, setCardData] = useState({ masked: '', valid: false });
 
-  const referenciaInfo = getReferenciaInfo(metodoPago);
-  const esMetodoTarjeta = isCardMethod(metodoPago);
-
-  // Detecta ítems con sobrestock
+  
   const itemsConProblema = cart.filter((item) => item.qty > item.stock);
   const hayProblemas = itemsConProblema.length > 0;
 
-  useEffect(() => {
-    setReferenciaExterna('');
-    setCardData({ masked: '', valid: false });
-  }, [metodoPago]);
 
-  // Redirige si el carrito está vacío y no hay orden confirmada
+  
   useEffect(() => {
     if (cart.length === 0 && !ordenConfirmada) {
-      // No redirigimos inmediatamente para no interrumpir flujos
+      
     }
   }, [cart, ordenConfirmada]);
 
   const handleQty = (item, newQty) => {
     if (newQty < 1) return;
-    if (newQty > item.stock) return; // bloquea escritura por encima del stock
+    if (newQty > item.stock) return; 
     updateQty(item.id, newQty);
   };
 
   const handlePagar = async (e) => {
     e.preventDefault();
-    if (hayProblemas || !user) return;
-    if (esMetodoTarjeta && !cardData.valid) return;
-
-    const refFinal = esMetodoTarjeta ? cardData.masked : referenciaExterna.trim();
+    if (hayProblemas || !user || !cardData.valid) return;
 
     const items = cart.map((item) => ({
       productoId: item.id,
@@ -82,7 +61,7 @@ const PagoCarrito = () => {
     const orden = await confirmarOrden({
       clienteId: user.id,
       metodoPago,
-      referenciaExterna: refFinal,
+      referenciaExterna: cardData.masked,
       items,
     });
 
@@ -92,7 +71,7 @@ const PagoCarrito = () => {
     }
   };
 
-  // Pantalla de confirmación exitosa
+  
   if (ordenConfirmada) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
@@ -129,7 +108,7 @@ const PagoCarrito = () => {
     );
   }
 
-  // Carrito vacío
+  
   if (cart.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6 text-center px-4">
@@ -149,7 +128,7 @@ const PagoCarrito = () => {
   return (
     <div className="py-10 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
 
-      {/* Header */}
+      
       <div className="mb-8">
         <Link to="/catalogo" className="flex items-center gap-2 text-slate-500 hover:text-primary text-sm mb-4 transition-colors">
           <FiArrowLeft /> Seguir comprando
@@ -160,7 +139,7 @@ const PagoCarrito = () => {
         <p className="text-slate-500 mt-1">{cart.length} ítem{cart.length !== 1 ? 's' : ''} en tu carrito</p>
       </div>
 
-      {/* Alerta global de sobrestock */}
+      
       {hayProblemas && (
         <div className="mb-6 flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl">
           <FiAlertTriangle className="text-2xl flex-shrink-0 mt-0.5" />
@@ -175,7 +154,7 @@ const PagoCarrito = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-        {/* Lista de ítems */}
+        
         <div className="lg:col-span-2 space-y-4">
           {cart.map((item) => {
             const excede = item.qty > item.stock;
@@ -189,14 +168,14 @@ const PagoCarrito = () => {
                   excede ? 'border-red-300 bg-red-50 shadow-sm' : 'border-slate-200 shadow-sm hover:shadow-md'
                 }`}
               >
-                {/* Imagen */}
+                
                 <img
                   src={imgSrc}
                   alt={item.nombre}
                   className="w-20 h-20 object-cover rounded-xl flex-shrink-0 bg-slate-100"
                 />
 
-                {/* Info */}
+                
                 <div className="flex-grow min-w-0">
                   <div className="flex justify-between items-start gap-2">
                     <div className="min-w-0">
@@ -213,7 +192,7 @@ const PagoCarrito = () => {
                   </div>
 
                   <div className="flex items-center justify-between mt-3 gap-4 flex-wrap">
-                    {/* Control de cantidad */}
+                    
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleQty(item, item.qty - 1)}
@@ -246,14 +225,14 @@ const PagoCarrito = () => {
                       </button>
                     </div>
 
-                    {/* Precio */}
+                    
                     <div className="text-right">
                       <p className="text-lg font-bold text-slate-900">{formatPrice(item.precio * item.qty)}</p>
                       <p className="text-xs text-slate-400">{formatPrice(item.precio)} c/u</p>
                     </div>
                   </div>
 
-                  {/* Alerta de stock por ítem */}
+                  
                   {excede && (
                     <div className="mt-2 flex items-center gap-2 text-red-600 text-xs font-medium">
                       <FiAlertTriangle />
@@ -261,7 +240,7 @@ const PagoCarrito = () => {
                     </div>
                   )}
 
-                  {/* Indicador de stock disponible */}
+                  
                   {!excede && (
                     <div className="mt-2 flex items-center gap-1 text-slate-400 text-xs">
                       <FiPackage className="text-xs" />
@@ -274,7 +253,7 @@ const PagoCarrito = () => {
           })}
         </div>
 
-        {/* Panel de pago */}
+        
         <div className="lg:col-span-1">
           <form
             onSubmit={handlePagar}
@@ -284,7 +263,7 @@ const PagoCarrito = () => {
               <FiCreditCard className="text-primary" /> Datos de Pago
             </h2>
 
-            {/* Resumen */}
+            
             <div className="bg-slate-50 rounded-xl p-4 mb-5 space-y-2">
               <div className="flex justify-between text-sm text-slate-600">
                 <span>Subtotal ({cart.reduce((s, i) => s + i.qty, 0)} uds.)</span>
@@ -296,9 +275,9 @@ const PagoCarrito = () => {
               </div>
             </div>
 
-            {/* Método de pago */}
+            
             <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Método de Pago</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Tarjeta</label>
               <select
                 className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
                 value={metodoPago}
@@ -310,37 +289,20 @@ const PagoCarrito = () => {
               </select>
             </div>
 
-            {/* Formulario de tarjeta o referencia */}
-            {esMetodoTarjeta ? (
-              <div className="mb-6">
-                <CardPaymentForm
-                  onCardData={setCardData}
-                  disabled={loading}
-                />
-              </div>
-            ) : (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  {referenciaInfo.label}
-                  {referenciaInfo.required && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                <input
-                  type="text"
-                  required={referenciaInfo.required}
-                  placeholder={referenciaInfo.placeholder}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                  value={referenciaExterna}
-                  onChange={(e) => setReferenciaExterna(e.target.value)}
-                />
-              </div>
-            )}
+            
+            <div className="mb-6">
+              <CardPaymentForm
+                onCardData={setCardData}
+                disabled={loading}
+              />
+            </div>
 
-            {/* Botón */}
+            
             <button
               type="submit"
-              disabled={loading || hayProblemas || cart.length === 0 || (esMetodoTarjeta && !cardData.valid)}
+              disabled={loading || hayProblemas || cart.length === 0 || !cardData.valid}
               className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-base transition-all ${
-                loading || hayProblemas || cart.length === 0 || (esMetodoTarjeta && !cardData.valid)
+                loading || hayProblemas || cart.length === 0 || !cardData.valid
                   ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   : 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg hover:-translate-y-0.5'
               }`}

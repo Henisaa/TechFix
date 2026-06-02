@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAgendamiento } from '../hooks/useAgendamiento';
 import { useAuth } from '../context/AuthContext';
-import { FiActivity, FiRefreshCw, FiSearch, FiCheckCircle, FiDollarSign, FiTool, FiXCircle, FiDownload } from 'react-icons/fi';
+import { scheduleApi } from '../services/api';
+import toast from 'react-hot-toast';
+import {
+  FiActivity, FiRefreshCw, FiSearch, FiCheckCircle, FiDollarSign,
+  FiTool, FiXCircle, FiDownload, FiHash,
+} from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 
 const ESTADO_COLORS = {
@@ -43,11 +48,10 @@ const formatPrice = (price) => {
   return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(price);
 };
 
-const METODOS_PAGO = [
-  { value: 'EFECTIVO',        label: 'Efectivo' },
-  { value: 'TARJETA_DEBITO',  label: 'Tarjeta de Débito' },
-  { value: 'TARJETA_CREDITO', label: 'Tarjeta de Crédito' },
-  { value: 'TRANSFERENCIA',   label: 'Transferencia' },
+const METODOS_CITA = [
+  { value: 'EFECTIVO',        label: '💵 Efectivo' },
+  { value: 'TARJETA_DEBITO',  label: '💳 Tarjeta de Débito' },
+  { value: 'TARJETA_CREDITO', label: '💳 Tarjeta de Crédito' },
 ];
 
 const Ordenes = () => {
@@ -61,6 +65,7 @@ const Ordenes = () => {
   const [gestionModal, setGestionModal] = useState(null);
   const [gestionForm, setGestionForm] = useState({ precio: '', descripcionRealizado: '', metodoPago: 'EFECTIVO' });
   const [confirmCancelar, setConfirmCancelar] = useState(false);
+  const [loadingEfectivo, setLoadingEfectivo] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -106,27 +111,68 @@ const Ordenes = () => {
     }
   };
 
-  const exportarExcel = () => {
-    const rows = citasFiltradas
-      .filter(c => c.estado !== 'CANCELADA')
-      .map(c => ({
-        'ID': c.id,
-        'Cliente': c.nombre || `Cliente #${c.clienteId}`,
-        'Equipo': c.tipoEquipo || c.tipoServicio,
-        'Descripción Problema': c.descripcionProblema || c.descripcion || '—',
-        'Descripción Realizado': c.descripcionRealizado || '—',
-        'Técnico': c.tecnico ? `${c.tecnico.nombre} ${c.tecnico.apellido || ''}`.trim() : '—',
-        'Fecha': c.fechaSolicitada || c.fecha || c.fechaHora || '—',
-        'Estado': c.estado,
-        'Estado Pago': c.estadoPagoTicket || '—',
-        'Método Pago': c.metodoPago || '—',
-        'Monto': c.precioCotizado ? Number(c.precioCotizado) : null,
-      }));
+  const handleConfirmarEfectivo = async (citaId) => {
+    setLoadingEfectivo(true);
+    try {
+      await scheduleApi.patch(`/${citaId}/marcar-pagado`);
+      toast.success('✅ Pago en efectivo confirmado');
+      if (user.role === 'ADMIN' || user.role === 'TECNICO') fetchTodasCitas();
+      else fetchCitasByCliente(user.id);
+    } catch {
+      toast.error('No se pudo confirmar el pago');
+    } finally {
+      setLoadingEfectivo(false);
+    }
+  };
 
-    const ws = XLSX.utils.json_to_sheet(rows);
+  const exportarExcel = () => {
+    const filas = citasFiltradas.map(c => ({
+      'N° Orden': c.numeroOrden || '—',
+      'ID Ticket': c.id,
+      'Cliente': c.nombre || (c.cliente ? `${c.cliente.nombre} ${c.cliente.apellido || ''}`.trim() : `#${c.clienteId}`),
+      'Tipo Servicio': c.tipoEquipo || c.tipoServicio || '—',
+      'Descripción Problema': c.descripcionProblema || c.descripcion || '—',
+      'Trabajo Realizado': c.descripcionRealizado || '—',
+      'Técnico': c.tecnico ? `${c.tecnico.nombre} ${c.tecnico.apellido || ''}`.trim() : '—',
+      'Fecha': c.fechaSolicitada || c.fecha || (c.fechaHora ? c.fechaHora.slice(0, 10) : '—'),
+      'Estado': c.estado || '—',
+      'Estado Pago': c.estadoPagoTicket || '—',
+      'Método Pago': c.metodoPago || '—',
+      'Monto (CLP)': c.precioCotizado ? Number(c.precioCotizado) : null,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(filas);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Órdenes');
-    XLSX.writeFile(wb, `TechFix_Ordenes_${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+    const cols = [8, 10, 20, 20, 35, 35, 20, 12, 12, 16, 16, 14];
+    ws['!cols'] = cols.map(w => ({ wch: w }));
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Servicios Técnicos');
+
+    const totalesPorEstado = {};
+    filas.forEach(f => {
+      if (!totalesPorEstado[f['Estado']]) totalesPorEstado[f['Estado']] = { cantidad: 0, monto: 0 };
+      totalesPorEstado[f['Estado']].cantidad++;
+      if (f['Monto (CLP)']) totalesPorEstado[f['Estado']].monto += f['Monto (CLP)'];
+    });
+
+    const resumenFilas = Object.entries(totalesPorEstado).map(([estado, d]) => ({
+      'Estado': estado,
+      'Cantidad': d.cantidad,
+      'Monto Total (CLP)': d.monto,
+    }));
+    resumenFilas.push({
+      'Estado': 'TOTAL',
+      'Cantidad': filas.length,
+      'Monto Total (CLP)': filas.reduce((s, f) => s + (f['Monto (CLP)'] || 0), 0),
+    });
+
+    const wsResumen = XLSX.utils.json_to_sheet(resumenFilas);
+    wsResumen['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+
+    XLSX.writeFile(wb, `TechFix_Balance_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success('📊 Excel generado correctamente');
   };
 
   const citasFiltradas = citas.filter((c) => {
@@ -134,7 +180,9 @@ const Ordenes = () => {
     const matchBusqueda =
       !busqueda ||
       String(c.id).includes(busqueda) ||
+      c.numeroOrden?.toLowerCase().includes(busqueda.toLowerCase()) ||
       c.tipoEquipo?.toLowerCase().includes(busqueda.toLowerCase()) ||
+      c.tipoServicio?.toLowerCase().includes(busqueda.toLowerCase()) ||
       c.nombre?.toLowerCase().includes(busqueda.toLowerCase());
     return matchEstado && matchBusqueda;
   });
@@ -160,8 +208,7 @@ const Ordenes = () => {
           {isAdmin && (
             <button
               onClick={exportarExcel}
-              disabled={citasFiltradas.filter(c => c.estado !== 'CANCELADA').length === 0}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold px-4 py-2 rounded-lg text-sm transition-all shadow-md"
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition-all shadow-md"
             >
               <FiDownload /> Exportar Excel
             </button>
@@ -183,7 +230,7 @@ const Ordenes = () => {
           <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Buscar por ID, equipo o nombre..."
+            placeholder="Buscar por ID, N° orden, equipo o nombre..."
             className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
@@ -244,11 +291,11 @@ const Ordenes = () => {
             <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">N° Orden</th>
                   {isStaff && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cliente</th>
                   )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Equipo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Servicio</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Fecha</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Estado</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Precio / Pago</th>
@@ -262,20 +309,30 @@ const Ordenes = () => {
                   const esCancelada = cita.estado === 'CANCELADA';
                   const esCompletada = cita.estado === 'COMPLETADA';
                   const puedeGestionar = isStaff && !esCancelada && !esCompletada;
+                  const esEfectivoPendiente = isStaff && cita.estadoPagoTicket === 'PENDIENTE_PAGO' && cita.metodoPago === 'EFECTIVO';
 
                   return (
                     <tr key={cita.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-slate-700">#{cita.id}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <FiHash className="text-slate-400 text-xs" />
+                          <span className="text-sm font-mono font-semibold text-slate-700">
+                            {cita.numeroOrden || `#${cita.id}`}
+                          </span>
+                        </div>
+                      </td>
                       {isStaff && (
                         <td className="px-6 py-4 text-sm text-slate-600">
-                          {cita.nombre || `Cliente #${cita.clienteId}`}
+                          {cita.nombre || (cita.cliente ? `${cita.cliente.nombre} ${cita.cliente.apellido || ''}`.trim() : `Cliente #${cita.clienteId}`)}
                         </td>
                       )}
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-slate-900">{cita.tipoEquipo || cita.tipoServicio}</div>
                         <div className="text-xs text-slate-400 max-w-xs truncate">{cita.descripcionProblema || cita.descripcion}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{cita.fechaSolicitada || cita.fecha || cita.fechaHora?.slice(0, 10) || '—'}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {cita.fechaSolicitada || cita.fecha || (cita.fechaHora ? cita.fechaHora.slice(0, 10) : '—')}
+                      </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[cita.estado] || 'bg-slate-100 text-slate-700'}`}>
                           {cita.estado || 'PENDIENTE'}
@@ -294,7 +351,7 @@ const Ordenes = () => {
                           cita.metodoPago === 'EFECTIVO' ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
                               <FiDollarSign className="text-xs" />
-                              {formatPrice(cita.precioCotizado)} — Pago en efectivo
+                              {formatPrice(cita.precioCotizado)} — Pagar en efectivo
                             </span>
                           ) : (
                             <button
@@ -317,7 +374,16 @@ const Ordenes = () => {
                       </td>
                       {isStaff && (
                         <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2 items-center">
+                          <div className="flex justify-end gap-2 items-center flex-wrap">
+                            {esEfectivoPendiente && (
+                              <button
+                                disabled={loadingEfectivo}
+                                onClick={() => handleConfirmarEfectivo(cita.id)}
+                                className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                              >
+                                <FiCheckCircle className="text-xs" /> Confirmar efectivo
+                              </button>
+                            )}
                             {puedeGestionar && (
                               <button
                                 onClick={() => openGestion(cita)}
@@ -326,7 +392,7 @@ const Ordenes = () => {
                                 <FiTool className="text-xs" /> Gestionar
                               </button>
                             )}
-                            {!esCancelada && !esCompletada && (
+                            {!esCancelada && !esCompletada && cita.estadoPagoTicket !== 'PENDIENTE_PAGO' && (
                               <select
                                 className="text-sm border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-primary bg-white"
                                 value={cita.estado || 'PENDIENTE'}
@@ -337,7 +403,7 @@ const Ordenes = () => {
                                 ))}
                               </select>
                             )}
-                            {(esCancelada || esCompletada) && (
+                            {(esCancelada || esCompletada) && !esEfectivoPendiente && (
                               <span className="text-xs text-slate-400 italic">Sin acciones</span>
                             )}
                           </div>
@@ -358,9 +424,15 @@ const Ordenes = () => {
             <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50">
               <div>
                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <FiTool className="text-orange-500" /> Gestionar Servicio #{gestionModal.id}
+                  <FiTool className="text-orange-500" /> Gestionar Servicio
                 </h3>
-                <p className="text-sm text-slate-500 mt-0.5">{gestionModal.tipoEquipo || gestionModal.tipoServicio}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <FiHash className="text-slate-400 text-xs" />
+                  <span className="text-sm font-mono text-slate-600 font-semibold">
+                    {gestionModal.numeroOrden || `#${gestionModal.id}`}
+                  </span>
+                  <span className="text-xs text-slate-400">— {gestionModal.tipoEquipo || gestionModal.tipoServicio}</span>
+                </div>
               </div>
               <button onClick={() => setGestionModal(null)} className="text-slate-400 hover:text-slate-600 text-2xl font-bold">×</button>
             </div>
@@ -385,7 +457,7 @@ const Ordenes = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Descripción del Trabajo Realizado *</label>
                 <textarea
                   rows={3}
-                  placeholder="Ej: Se realizó formateo completo del computador del cliente, instalación de Windows 11 y drivers."
+                  placeholder="Ej: Se realizó formateo completo del computador, instalación de Windows 11 y drivers."
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm resize-none"
                   value={gestionForm.descripcionRealizado}
                   onChange={(e) => setGestionForm({ ...gestionForm, descripcionRealizado: e.target.value })}
@@ -393,24 +465,24 @@ const Ordenes = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Método de Pago</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Método de Pago del Cliente</label>
                 <select
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
                   value={gestionForm.metodoPago}
                   onChange={(e) => setGestionForm({ ...gestionForm, metodoPago: e.target.value })}
                 >
-                  {METODOS_PAGO.map((m) => (
+                  {METODOS_CITA.map((m) => (
                     <option key={m.value} value={m.value}>{m.label}</option>
                   ))}
                 </select>
                 {gestionForm.metodoPago !== 'EFECTIVO' && (
                   <p className="text-xs text-blue-600 mt-1.5">
-                    💳 El cliente recibirá un enlace para pagar online con tarjeta.
+                    💳 El cliente recibirá un botón para pagar online con tarjeta.
                   </p>
                 )}
                 {gestionForm.metodoPago === 'EFECTIVO' && (
                   <p className="text-xs text-amber-600 mt-1.5">
-                    💵 El cliente debe pagar en efectivo al técnico. Tú debes confirmar el cobro en el sistema.
+                    💵 El cliente paga en efectivo. Deberás confirmar el cobro manualmente.
                   </p>
                 )}
               </div>

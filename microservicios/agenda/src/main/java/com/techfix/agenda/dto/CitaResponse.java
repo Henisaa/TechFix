@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 public class CitaResponse {
 
     private Long id;
+    private String numeroOrden;
     private LocalDateTime fechaHora;
     private TipoServicio tipoServicio;
     private EstadoCita estado;

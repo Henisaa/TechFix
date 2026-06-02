@@ -51,7 +51,7 @@ const Navbar = () => {
               </Link>
             ))}
 
-            {/* Ícono Carrito */}
+            
             <Link
               to="/pago-carrito"
               className="relative p-2 text-slate-300 hover:text-accent transition-colors"
@@ -111,7 +111,7 @@ const Navbar = () => {
                 {link.name}
               </Link>
             ))}
-            {/* Carrito en móvil */}
+            
             <Link
               to="/pago-carrito"
               className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium hover:bg-slate-800"

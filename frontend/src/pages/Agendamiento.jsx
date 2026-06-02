@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { scheduleApi } from '../services/api';
 import toast from 'react-hot-toast';
 import {
-  FiCalendar, FiClock, FiPlus, FiRefreshCw, FiCheckCircle, FiXCircle, FiTool, FiDollarSign, FiX,
+  FiCalendar, FiClock, FiPlus, FiRefreshCw, FiCheckCircle, FiXCircle, FiTool, FiDollarSign, FiX, FiHash,
 } from 'react-icons/fi';
 
 const TIPO_SERVICIO = ['REPARACION', 'INSTALACION'];
@@ -44,8 +44,8 @@ const Agendamiento = () => {
     tecnicoId: '',
   });
 
-  // Estado del modal de precio
-  const [precioModal, setPrecioModal] = useState(null); // { citaId, descripcionActual }
+  
+  const [precioModal, setPrecioModal] = useState(null); 
   const [precioForm, setPrecioForm] = useState({ precioCotizado: '', descripcionTrabajo: '' });
   const [loadingPrecio, setLoadingPrecio] = useState(false);
 
@@ -95,13 +95,13 @@ const Agendamiento = () => {
     if (result) handleRefresh();
   };
 
-  // Abre el modal para asignar precio
+  
   const handleAbrirPrecioModal = (cita) => {
     setPrecioModal({ citaId: cita.id });
     setPrecioForm({ precioCotizado: '', descripcionTrabajo: cita.descripcion || '' });
   };
 
-  // Envía el precio al backend
+  
   const handleAsignarPrecio = async (e) => {
     e.preventDefault();
     if (!precioModal || !precioForm.precioCotizado) return;
@@ -295,6 +295,7 @@ const Agendamiento = () => {
               <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                   <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">N° Orden</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">ID</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Cliente</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Servicio</th>
@@ -306,6 +307,14 @@ const Agendamiento = () => {
                 <tbody className="bg-white divide-y divide-slate-200">
                   {citas.map((cita) => (
                     <tr key={cita.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1">
+                          <FiHash className="text-slate-400 text-xs" />
+                          <span className="text-sm font-mono font-semibold text-primary">
+                            {cita.numeroOrden || '—'}
+                          </span>
+                        </div>
+                      </td>
                       <td className="px-6 py-4 text-sm text-slate-500">#{cita.id}</td>
                       <td className="px-6 py-4 text-sm text-slate-700">
                         <div className="font-medium">
@@ -374,7 +383,7 @@ const Agendamiento = () => {
           )}
         </div>
       )}
-      {/* Modal: Asignar Precio al Ticket */}
+      
       {precioModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">

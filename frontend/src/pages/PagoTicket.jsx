@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useAgendamiento } from '../hooks/useAgendamiento';
 import { scheduleApi } from '../services/api';
 import toast from 'react-hot-toast';
 import CardPaymentForm from '../components/ui/CardPaymentForm';
 import {
   FiTool, FiCheckCircle, FiAlertTriangle, FiCreditCard,
-  FiArrowLeft, FiUser, FiCalendar, FiDollarSign, FiInfo,
+  FiArrowLeft, FiUser, FiCalendar, FiDollarSign, FiInfo, FiHash,
 } from 'react-icons/fi';
 
 const formatPrice = (price) =>
@@ -25,30 +24,14 @@ const formatDateTime = (dt) => {
   }
 };
 
-const METODOS_PAGO = [
-  { value: 'EFECTIVO',        label: '💵 Efectivo' },
-  { value: 'TARJETA_DEBITO',  label: '💳 Tarjeta de Débito' },
-  { value: 'TARJETA_CREDITO', label: '💳 Tarjeta de Crédito' },
-  { value: 'TRANSFERENCIA',   label: '🏦 Transferencia' },
-];
-
-const isCardMethod = (m) => m === 'TARJETA_DEBITO' || m === 'TARJETA_CREDITO';
-
-const getReferenciaInfo = (metodo) => {
-  switch (metodo) {
-    case 'TRANSFERENCIA':
-      return { label: 'Número de operación bancaria', placeholder: 'Ej: 123456789', required: true };
-    default:
-      return { label: 'Número de recibo (opcional)', placeholder: 'Se genera automáticamente si se deja vacío', required: false };
-  }
-};
-
 const ESTADO_COLORES = {
   PENDIENTE:   'bg-yellow-100 text-yellow-800 border-yellow-200',
   EN_PROCESO:  'bg-orange-100 text-orange-800 border-orange-200',
   COMPLETADA:  'bg-green-100 text-green-800 border-green-200',
   CANCELADA:   'bg-red-100 text-red-800 border-red-200',
 };
+
+const isCardMethod = (m) => m === 'TARJETA_DEBITO' || m === 'TARJETA_CREDITO';
 
 const PagoTicket = () => {
   const { citaId } = useParams();
@@ -59,15 +42,8 @@ const PagoTicket = () => {
   const [loadingCita, setLoadingCita] = useState(true);
   const [loadingPago, setLoadingPago] = useState(false);
   const [pagado, setPagado] = useState(false);
-
-  const [metodoPago, setMetodoPago] = useState('EFECTIVO');
-  const [referenciaExterna, setReferenciaExterna] = useState('');
   const [cardData, setCardData] = useState({ masked: '', valid: false });
 
-  const referenciaInfo = getReferenciaInfo(metodoPago);
-  const esMetodoTarjeta = isCardMethod(metodoPago);
-
-  // Carga la cita por ID
   useEffect(() => {
     const cargarCita = async () => {
       setLoadingCita(true);
@@ -77,7 +53,7 @@ const PagoTicket = () => {
         if (res.data?.estadoPagoTicket === 'PAGADO') {
           setPagado(true);
         }
-      } catch (error) {
+      } catch {
         toast.error('No se encontró el ticket de servicio');
         navigate('/ordenes');
       } finally {
@@ -87,15 +63,10 @@ const PagoTicket = () => {
     if (citaId) cargarCita();
   }, [citaId]);
 
-  useEffect(() => {
-    setReferenciaExterna('');
-    setCardData({ masked: '', valid: false });
-  }, [metodoPago]);
-
   const handlePagar = async (e) => {
     e.preventDefault();
     if (!cita || loadingPago) return;
-    if (esMetodoTarjeta && !cardData.valid) return;
+    if (isCardMethod(cita.metodoPago) && !cardData.valid) return;
 
     setLoadingPago(true);
     try {
@@ -103,14 +74,13 @@ const PagoTicket = () => {
       setCita(res.data);
       setPagado(true);
       toast.success('✅ Servicio técnico pagado exitosamente');
-    } catch (error) {
+    } catch {
       toast.error('No se pudo procesar el pago. Inténtalo de nuevo.');
     } finally {
       setLoadingPago(false);
     }
   };
 
-  // Loading
   if (loadingCita) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -127,8 +97,9 @@ const PagoTicket = () => {
   const estadoPagoTicket = cita.estadoPagoTicket;
   const tienePrecio = cita.precioCotizado && Number(cita.precioCotizado) > 0;
   const esPendientePago = estadoPagoTicket === 'PENDIENTE_PAGO';
+  const esEfectivo = cita.metodoPago === 'EFECTIVO';
+  const esTarjeta = isCardMethod(cita.metodoPago);
 
-  // Pantalla de pago exitoso
   if (pagado || estadoPagoTicket === 'PAGADO') {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-emerald-50 to-teal-50">
@@ -146,6 +117,12 @@ const PagoTicket = () => {
               <span className="text-sm text-slate-500">Ticket</span>
               <span className="font-bold text-primary">#{cita.id}</span>
             </div>
+            {cita.numeroOrden && (
+              <div className="flex justify-between">
+                <span className="text-sm text-slate-500">N° Orden</span>
+                <span className="font-bold text-slate-700 font-mono">{cita.numeroOrden}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-sm text-slate-500">Monto pagado</span>
               <span className="font-bold text-slate-900 text-lg">{formatPrice(cita.precioCotizado)}</span>
@@ -181,12 +158,10 @@ const PagoTicket = () => {
   return (
     <div className="py-10 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
 
-      {/* Volver */}
       <Link to="/ordenes" className="flex items-center gap-2 text-slate-500 hover:text-primary text-sm mb-6 transition-colors">
         <FiArrowLeft /> Volver a mis órdenes
       </Link>
 
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-slate-900 flex items-center gap-3">
           <FiTool className="text-primary" /> Pago de Servicio Técnico
@@ -194,7 +169,6 @@ const PagoTicket = () => {
         <p className="text-slate-500 mt-1">Ticket #{cita.id}</p>
       </div>
 
-      {/* Detalle del ticket */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
         <h2 className="text-lg font-bold text-slate-800 mb-5 pb-4 border-b border-slate-100">
           📋 Detalle del Servicio
@@ -204,6 +178,12 @@ const PagoTicket = () => {
             <p className="text-slate-500 flex items-center gap-1.5 mb-0.5"><FiInfo className="text-xs" /> Ticket ID</p>
             <p className="font-bold text-slate-900 text-lg">#{cita.id}</p>
           </div>
+          {cita.numeroOrden && (
+            <div>
+              <p className="text-slate-500 flex items-center gap-1.5 mb-0.5"><FiHash className="text-xs" /> N° de Orden</p>
+              <p className="font-bold text-primary font-mono">{cita.numeroOrden}</p>
+            </div>
+          )}
           <div>
             <p className="text-slate-500 flex items-center gap-1.5 mb-0.5"><FiTool className="text-xs" /> Tipo de Servicio</p>
             <p className="font-semibold text-slate-800">{cita.tipoServicio}</p>
@@ -212,6 +192,12 @@ const PagoTicket = () => {
             <p className="text-slate-500 mb-0.5">Descripción del problema</p>
             <p className="text-slate-800">{cita.descripcion || '—'}</p>
           </div>
+          {cita.descripcionRealizado && (
+            <div className="sm:col-span-2">
+              <p className="text-slate-500 mb-0.5">Trabajo realizado</p>
+              <p className="text-slate-800 font-medium">{cita.descripcionRealizado}</p>
+            </div>
+          )}
           <div>
             <p className="text-slate-500 flex items-center gap-1.5 mb-0.5"><FiCalendar className="text-xs" /> Fecha y Hora</p>
             <p className="font-medium text-slate-800">{formatDateTime(cita.fechaHora)}</p>
@@ -246,7 +232,6 @@ const PagoTicket = () => {
           </div>
         </div>
 
-        {/* Precio destacado */}
         {tienePrecio && (
           <div className="mt-6 pt-5 border-t border-slate-100">
             <p className="text-slate-500 text-sm flex items-center gap-1.5 mb-1">
@@ -257,78 +242,59 @@ const PagoTicket = () => {
         )}
       </div>
 
-      {/* Sin precio asignado */}
       {!tienePrecio && (
         <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-800 px-5 py-4 rounded-xl mb-6">
           <FiAlertTriangle className="text-xl flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold">El técnico aún no ha asignado el precio</p>
-            <p className="text-sm mt-1">El pago estará disponible una vez que el técnico finalice el servicio y asigne un valor.</p>
+            <p className="text-sm mt-1">El pago estará disponible una vez que el técnico finalice el servicio.</p>
           </div>
         </div>
       )}
 
-      {/* Formulario de pago */}
-      {esPendientePago && tienePrecio && (
+      {esPendientePago && tienePrecio && esEfectivo && (
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-800 px-5 py-4 rounded-xl mb-6">
+          <FiDollarSign className="text-xl flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Pago en efectivo</p>
+            <p className="text-sm mt-1">
+              El monto de <strong>{formatPrice(cita.precioCotizado)}</strong> debe pagarse en efectivo al técnico.
+              El técnico confirmará el pago en el sistema.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {esPendientePago && tienePrecio && esTarjeta && (
         <form onSubmit={handlePagar} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
           <h2 className="text-lg font-bold text-slate-800 mb-5 flex items-center gap-2">
             <FiCreditCard className="text-primary" /> Datos de Pago
           </h2>
 
-          {/* Método de pago */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Método de Pago</label>
-            <div className="relative">
-              <FiCreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <select
-                className="w-full px-4 py-3 pl-9 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                value={metodoPago}
-                onChange={(e) => setMetodoPago(e.target.value)}
-              >
-                {METODOS_PAGO.map((m) => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-            </div>
+          <div className="mb-4 p-4 bg-slate-50 rounded-xl text-sm">
+            <span className="text-slate-500">Método de pago asignado: </span>
+            <span className="font-semibold text-slate-800">
+              {cita.metodoPago === 'TARJETA_DEBITO' ? '💳 Tarjeta de Débito' : '💳 Tarjeta de Crédito'}
+            </span>
           </div>
 
-          {/* Tarjeta o referencia */}
-          {esMetodoTarjeta ? (
-            <div className="mb-6">
-              <CardPaymentForm
-                onCardData={setCardData}
-                disabled={loadingPago}
-              />
-            </div>
-          ) : (
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                {referenciaInfo.label}
-                {referenciaInfo.required && <span className="text-red-500 ml-1">*</span>}
-              </label>
-              <input
-                type="text"
-                required={referenciaInfo.required}
-                placeholder={referenciaInfo.placeholder}
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                value={referenciaExterna}
-                onChange={(e) => setReferenciaExterna(e.target.value)}
-              />
-            </div>
-          )}
+          <div className="mb-6">
+            <CardPaymentForm
+              onCardData={setCardData}
+              disabled={loadingPago}
+            />
+          </div>
 
-          {/* Resumen */}
           <div className="bg-slate-50 rounded-xl p-4 mb-5 flex justify-between items-center">
             <span className="text-slate-600 font-medium">Total a pagar</span>
             <span className="text-2xl font-extrabold text-primary">{formatPrice(cita.precioCotizado)}</span>
           </div>
 
-          {/* Botón */}
           <button
             type="submit"
-            disabled={loadingPago || (esMetodoTarjeta && !cardData.valid)}
+            disabled={loadingPago || !cardData.valid}
             className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-base transition-all ${
-              loadingPago || (esMetodoTarjeta && !cardData.valid)
+              loadingPago || !cardData.valid
                 ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 : 'bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg hover:-translate-y-0.5'
             }`}

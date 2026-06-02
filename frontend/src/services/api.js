@@ -63,12 +63,12 @@ const handleResponseError = (error) => {
       }
     } else if (status === 403) {
       toast.error(msg || "No tienes permisos para esta acción");
-    } else if (status === 404) {
-      toast.error("Recurso no encontrado");
     } else if (status === 409) {
       toast.error(msg || "Conflicto en el servidor");
     } else if (status === 400) {
-      toast.error("Datos inválidos — revisa el formulario");
+      toast.error(msg || "Datos inválidos — revisa el formulario");
+    } else if (status === 500) {
+      toast.error("Error interno del servidor");
     }
   }
   return Promise.reject(error);

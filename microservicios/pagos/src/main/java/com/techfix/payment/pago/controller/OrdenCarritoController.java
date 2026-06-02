@@ -62,4 +62,10 @@ public class OrdenCarritoController {
     public ResponseEntity<List<OrdenCarrito>> verOrdenesPorCliente(@PathVariable Long clienteId) {
         return ResponseEntity.ok(ordenCarritoService.verOrdenesPorCliente(clienteId));
     }
+
+    @GetMapping("/todas")
+    @Operation(summary = "Ver todas las órdenes (solo admin)")
+    public ResponseEntity<List<OrdenCarrito>> verTodasOrdenes() {
+        return ResponseEntity.ok(ordenCarritoService.verTodasOrdenes());
+    }
 }

@@ -12,7 +12,7 @@ const formatPrice = (price) => {
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
 
-  // Normaliza el producto al formato del CartContext
+  
   const normalized = {
     id: product.id,
     sku: product.cod_repuesto || product.sku,
@@ -34,7 +34,7 @@ const ProductCard = ({ product }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 group flex flex-col">
-      {/* Imagen */}
+      
       <div className="w-full overflow-hidden bg-slate-100">
         <img
           src={normalized.imageUrl || `https://placehold.co/300x200/1e40af/ffffff?text=${encodeURIComponent(normalized.name?.slice(0, 15) || 'Repuesto')}`}
@@ -43,7 +43,7 @@ const ProductCard = ({ product }) => {
         />
       </div>
 
-      {/* Contenido */}
+      
       <div className="p-5 flex flex-col flex-grow">
         <div className="flex justify-between items-start mb-2">
           <span className="text-xs font-semibold tracking-wider text-accent uppercase truncate max-w-[70%]">

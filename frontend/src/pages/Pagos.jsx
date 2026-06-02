@@ -8,10 +8,11 @@ import {
 
 const formatPrice = (price) => {
   if (price == null) return '';
-  return new Intl.NumberFormat('es-CL', {
-    style: 'currency',
-    currency: 'CLP',
-  }).format(price).replace('CLP', '').trim();
+  return '$ ' + new Intl.NumberFormat('es-CL', {
+    style: 'decimal',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(price);
 };
 
 const formatDateTime = (dt) => {

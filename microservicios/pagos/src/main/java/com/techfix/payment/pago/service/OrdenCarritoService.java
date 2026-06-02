@@ -77,4 +77,9 @@ public class OrdenCarritoService {
     public List<OrdenCarrito> verOrdenesPorCliente(Long clienteId) {
         return ordenCarritoRepository.findByClienteIdOrderByCreatedAtDesc(clienteId);
     }
+
+    @Transactional(readOnly = true)
+    public List<OrdenCarrito> verTodasOrdenes() {
+        return ordenCarritoRepository.findAll();
+    }
 }

@@ -83,6 +83,7 @@ services:
     build:
       context: ./microservicios/roles
       dockerfile: Dockerfile
+      network: host
     container_name: techfix_svc_roles
     restart: unless-stopped
     networks:
@@ -112,6 +113,7 @@ services:
     build:
       context: ./microservicios/pagos
       dockerfile: Dockerfile
+      network: host
     container_name: techfix_svc_pagos
     restart: unless-stopped
     networks:
@@ -188,6 +190,7 @@ services:
     build:
       context: ./microservicios/gateway
       dockerfile: Dockerfile
+      network: host
     container_name: techfix_svc_gateway
     restart: unless-stopped
     networks:

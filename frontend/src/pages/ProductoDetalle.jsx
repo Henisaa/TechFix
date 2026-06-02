@@ -23,7 +23,7 @@ const ProductoDetalle = () => {
   const [qty, setQty] = useState(1);
   const [loadingLocal, setLoadingLocal] = useState(true);
 
-  // Busca el producto por ID
+  
   useEffect(() => {
     const loadProducto = async () => {
       setLoadingLocal(true);
@@ -32,7 +32,7 @@ const ProductoDetalle = () => {
     loadProducto();
   }, [id]);
 
-  // Una vez cargados los productos, filtra el actual y los relacionados
+  
   useEffect(() => {
     if (productos.length === 0) return;
     const found = productos.find((p) => String(p.id) === String(id));
@@ -42,7 +42,7 @@ const ProductoDetalle = () => {
         .filter((p) => String(p.id) !== String(id))
         .filter((p) => !found.categoryName || p.categoryName === found.categoryName)
         .slice(0, 4);
-      // Si no hay suficientes de la misma categoría, completa con otros
+      
       if (rel.length < 4) {
         const extra = productos
           .filter((p) => String(p.id) !== String(id) && p.categoryName !== found.categoryName)
@@ -55,12 +55,12 @@ const ProductoDetalle = () => {
     setLoadingLocal(false);
   }, [productos, id]);
 
-  // Stock del producto
+  
   const stock = producto?.quantityInStock ?? 0;
   const stockExcedido = qty > stock;
   const sinStock = stock <= 0;
 
-  // Ajusta qty cuando cambia el producto
+  
   useEffect(() => {
     setQty(1);
   }, [id]);
@@ -71,12 +71,12 @@ const ProductoDetalle = () => {
       setQty(1);
       return;
     }
-    setQty(parsed); // Permitimos escribir el valor aunque exceda para que la UI lo detecte
+    setQty(parsed); 
   };
 
   const handleDecrement = () => setQty((q) => Math.max(1, q - 1));
   const handleIncrement = () => {
-    if (qty >= stock) return; // bloquea al límite
+    if (qty >= stock) return; 
     setQty((q) => q + 1);
   };
 
@@ -94,7 +94,7 @@ const ProductoDetalle = () => {
     toast.success(`${qty} × "${producto.name}" añadido al carrito`, { icon: '🛒' });
   };
 
-  // Loading
+  
   if (loadingLocal || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -106,7 +106,7 @@ const ProductoDetalle = () => {
     );
   }
 
-  // No encontrado
+  
   if (!producto) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6 text-center px-4">
@@ -127,7 +127,7 @@ const ProductoDetalle = () => {
     <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
 
-        {/* Breadcrumb */}
+        
         <nav className="flex items-center gap-2 text-sm text-slate-500 mb-8">
           <Link to="/" className="hover:text-primary transition-colors">Inicio</Link>
           <span>/</span>
@@ -136,10 +136,10 @@ const ProductoDetalle = () => {
           <span className="text-slate-800 font-medium truncate max-w-xs">{producto.name}</span>
         </nav>
 
-        {/* Contenido principal */}
+        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
 
-          {/* Columna izquierda — Imagen */}
+          
           <div>
             <div className="bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
               <img
@@ -150,10 +150,10 @@ const ProductoDetalle = () => {
             </div>
           </div>
 
-          {/* Columna derecha — Info + Compra */}
+          
           <div className="flex flex-col gap-5">
 
-            {/* Header */}
+            
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-xs font-semibold tracking-widest text-accent uppercase">
@@ -182,7 +182,7 @@ const ProductoDetalle = () => {
               </div>
             </div>
 
-            {/* Precio */}
+            
             <div className="bg-slate-50 rounded-xl px-5 py-4 border border-slate-200">
               <p className="text-sm text-slate-500 mb-1">Precio de venta</p>
               <p className="text-4xl font-extrabold text-slate-900">
@@ -190,14 +190,14 @@ const ProductoDetalle = () => {
               </p>
             </div>
 
-            {/* Descripción */}
+            
             {producto.description && (
               <p className="text-slate-600 leading-relaxed text-sm">
                 {producto.description}
               </p>
             )}
 
-            {/* Stock info */}
+            
             <div className="text-sm text-slate-500 flex items-center gap-2">
               <FiPackage className="text-primary" />
               {sinStock ? (
@@ -209,7 +209,7 @@ const ProductoDetalle = () => {
               )}
             </div>
 
-            {/* Alerta de sobrestock */}
+            
             {stockExcedido && !sinStock && (
               <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm animate-pulse-once">
                 <FiAlertTriangle className="text-xl flex-shrink-0 mt-0.5" />
@@ -220,7 +220,7 @@ const ProductoDetalle = () => {
               </div>
             )}
 
-            {/* Selector de cantidad */}
+            
             {!sinStock && (
               <div className="flex items-center gap-4">
                 <span className="text-sm font-medium text-slate-700">Cantidad:</span>
@@ -256,7 +256,7 @@ const ProductoDetalle = () => {
               </div>
             )}
 
-            {/* Botón Añadir al carrito */}
+            
             <button
               onClick={handleAddToCart}
               disabled={sinStock || stockExcedido}
@@ -274,7 +274,7 @@ const ProductoDetalle = () => {
                 : `Añadir ${qty} al carrito — ${formatPrice(producto.salePrice * qty)}`}
             </button>
 
-            {/* Subtotal */}
+            
             {!sinStock && !stockExcedido && qty > 1 && (
               <p className="text-center text-sm text-slate-500">
                 Subtotal: <strong className="text-slate-800">{formatPrice(producto.salePrice * qty)}</strong>
@@ -284,7 +284,7 @@ const ProductoDetalle = () => {
           </div>
         </div>
 
-        {/* Productos relacionados */}
+        
         {relacionados.length > 0 && (
           <section>
             <h2 className="text-2xl font-bold text-slate-800 mb-6">Productos relacionados</h2>
