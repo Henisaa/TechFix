@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -78,6 +79,12 @@ public class PagoController {
     })
     public ResponseEntity<Pago> verPago(@PathVariable Long id) {
         return ResponseEntity.ok(pagoService.verPago(id));
+    }
+
+    @GetMapping("/lista")
+    @Operation(summary = "Listar todos los pagos (solo admin)")
+    public ResponseEntity<List<Pago>> listarTodos() {
+        return ResponseEntity.ok(pagoService.listarTodos());
     }
 
     @PutMapping("/alterar/{id}")

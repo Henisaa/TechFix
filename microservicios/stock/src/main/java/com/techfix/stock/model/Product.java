@@ -86,7 +86,7 @@ public class Product {
     @Column(length = 100)
     private String location;
 
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT")
     private String imageUrl;
 
     @Column(columnDefinition = "TEXT")

@@ -108,4 +108,10 @@ public class PagoServiceImpl implements PagoService {
         log.info("Pago id={} actualizado. Estado actual: {}", id, actualizado.getEstadoPago());
         return actualizado;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Pago> listarTodos() {
+        return pagoRepository.findAll();
+    }
 }

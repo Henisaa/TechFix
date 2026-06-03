@@ -31,6 +31,14 @@ public class RouteConfig {
                                                 .filters(f -> f.rewritePath("/gateway/users(?<seg>/?.*)",
                                                                 "/api/v1/users${seg}"))
                                                 .uri(ROLES))
+                                .route("pagos-lista", r -> r.path("/gateway/pagos/lista").and().method("GET")
+                                                .filters(f -> f.rewritePath("/gateway/pagos/lista",
+                                                                "/pago/lista"))
+                                                .uri(PAGOS))
+                                .route("pagos-carrito", r -> r.path("/gateway/pagos/carrito/**")
+                                                .filters(f -> f.rewritePath("/gateway/pagos/carrito(?<seg>/?.*)",
+                                                                "/pago/carrito${seg}"))
+                                                .uri(PAGOS))
                                 .route("pagos", r -> r.path("/gateway/pagos/**")
                                                 .filters(f -> f.rewritePath("/gateway/pagos(?<seg>/?.*)",
                                                                 "/pago${seg}"))

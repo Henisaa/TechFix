@@ -161,7 +161,7 @@ const Agendamiento = () => {
             activeTab === 'mis-citas' ? 'border-b-2 border-primary text-primary' : 'text-slate-500 hover:text-slate-700'
           }`}
         >
-          {isStaff ? '📋 Todas las Citas' : '📅 Mis Citas'}
+          {isStaff ? '📋 Todas las Citas' : 'Mis Citas'}
         </button>
       </div>
 
@@ -263,7 +263,7 @@ const Agendamiento = () => {
             </div>
           ) : citas.length === 0 ? (
             <div className="text-center py-16">
-              <div className="text-5xl mb-4">📅</div>
+              <div className="text-5xl mb-4"><FiCalendar className="inline text-slate-300" /></div>
               <p className="text-slate-500">No hay citas registradas.</p>
               {!isStaff && (
                 <button

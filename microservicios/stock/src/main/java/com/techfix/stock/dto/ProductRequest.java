@@ -53,7 +53,6 @@ public class ProductRequest {
     @Size(max = 100)
     private String location;
 
-    @Size(max = 500)
     private String imageUrl;
 
     private String notes;

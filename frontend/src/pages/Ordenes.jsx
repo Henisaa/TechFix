@@ -168,13 +168,39 @@ const Ordenes = () => {
       'Monto (CLP)': c.precioCotizado ? Number(c.precioCotizado) : null,
     }));
 
+    const comprasFiltradas = ordenesCarrito.filter((orden) => {
+      if (!busqueda) return true;
+      const term = busqueda.toLowerCase();
+      return (
+        String(orden.id).includes(term) ||
+        orden.clienteUsername?.toLowerCase().includes(term) ||
+        String(orden.clienteId).includes(term) ||
+        (orden.items || []).some(item => item.nombreProducto?.toLowerCase().includes(term))
+      );
+    });
+
+    const filasVentas = comprasFiltradas.map(orden => ({
+      'ID Orden': orden.id,
+      'Cliente': orden.clienteUsername || (orden.clienteId ? `ID: ${orden.clienteId}` : '—'),
+      'Fecha': orden.createdAt ? new Date(orden.createdAt).toLocaleString('es-CL') : '—',
+      'Productos': (orden.items || []).map(item => `${item.nombreProducto} (x${item.cantidad})`).join(', '),
+      'Método Pago': orden.metodoPago || '—',
+      'Monto Total (CLP)': orden.montoTotal ? Number(orden.montoTotal) : 0,
+      'Estado': orden.estadoOrden || '—',
+    }));
+
     const ws = XLSX.utils.json_to_sheet(filas);
+    const wsVentas = XLSX.utils.json_to_sheet(filasVentas);
     const wb = XLSX.utils.book_new();
 
     const cols = [8, 10, 20, 20, 35, 35, 20, 12, 12, 16, 16, 14];
     ws['!cols'] = cols.map(w => ({ wch: w }));
 
+    const colsVentas = [10, 20, 22, 50, 16, 18, 14];
+    wsVentas['!cols'] = colsVentas.map(w => ({ wch: w }));
+
     XLSX.utils.book_append_sheet(wb, ws, 'Servicios Técnicos');
+    XLSX.utils.book_append_sheet(wb, wsVentas, 'Venta de Artículos');
 
     const totalesPorEstado = {};
     filas.forEach(f => {
@@ -183,19 +209,45 @@ const Ordenes = () => {
       if (f['Monto (CLP)']) totalesPorEstado[f['Estado']].monto += f['Monto (CLP)'];
     });
 
-    const resumenFilas = Object.entries(totalesPorEstado).map(([estado, d]) => ({
-      'Estado': estado,
-      'Cantidad': d.cantidad,
-      'Monto Total (CLP)': d.monto,
-    }));
-    resumenFilas.push({
-      'Estado': 'TOTAL',
-      'Cantidad': filas.length,
-      'Monto Total (CLP)': filas.reduce((s, f) => s + (f['Monto (CLP)'] || 0), 0),
+    const resumenAOA = [
+      ['Resumen de Servicios Técnicos'],
+      ['Estado', 'Cantidad', 'Monto Total (CLP)'],
+    ];
+    Object.entries(totalesPorEstado).forEach(([estado, d]) => {
+      resumenAOA.push([estado, d.cantidad, d.monto]);
+    });
+    resumenAOA.push([
+      'TOTAL',
+      filas.length,
+      filas.reduce((s, f) => s + (f['Monto (CLP)'] || 0), 0)
+    ]);
+
+    resumenAOA.push([]);
+    resumenAOA.push([]);
+
+    resumenAOA.push(['Resumen de Venta de Artículos']);
+    resumenAOA.push(['Estado', 'Cantidad', 'Monto Total (CLP)']);
+
+    const totalesVentasPorEstado = {};
+    filasVentas.forEach(f => {
+      const estado = f['Estado'] || 'PENDIENTE';
+      if (!totalesVentasPorEstado[estado]) totalesVentasPorEstado[estado] = { cantidad: 0, monto: 0 };
+      totalesVentasPorEstado[estado].cantidad++;
+      totalesVentasPorEstado[estado].monto += (f['Monto Total (CLP)'] || 0);
     });
 
-    const wsResumen = XLSX.utils.json_to_sheet(resumenFilas);
-    wsResumen['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 18 }];
+    Object.entries(totalesVentasPorEstado).forEach(([estado, d]) => {
+      resumenAOA.push([estado, d.cantidad, d.monto]);
+    });
+
+    resumenAOA.push([
+      'TOTAL',
+      filasVentas.length,
+      filasVentas.reduce((s, f) => s + (f['Monto Total (CLP)'] || 0), 0)
+    ]);
+
+    const wsResumen = XLSX.utils.aoa_to_sheet(resumenAOA);
+    wsResumen['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
 
     XLSX.writeFile(wb, `TechFix_Balance_${new Date().toISOString().slice(0, 10)}.xlsx`);

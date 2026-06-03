@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useInventario } from '../hooks/useInventario';
 import { useAuth } from '../context/AuthContext';
-import { FiPackage, FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiX, FiSave } from 'react-icons/fi';
+import { FiPackage, FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiX, FiSave, FiImage } from 'react-icons/fi';
 
 const formatPrice = (price) => {
   if (!price) return '$0';
@@ -19,6 +19,7 @@ const EMPTY_FORM = {
   quantityInStock: '',
   minStockLevel: 2,
   categoryId: '',
+  imageUrl: '',
 };
 
 const Inventario = () => {
@@ -38,6 +39,8 @@ const Inventario = () => {
   const [editando, setEditando] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [busqueda, setBusqueda] = useState('');
+  const [imagePreview, setImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchProductos();
@@ -50,6 +53,18 @@ const Inventario = () => {
       p.sku?.toLowerCase().includes(busqueda.toLowerCase())
   );
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target.result;
+      setImagePreview(base64);
+      setFormData((prev) => ({ ...prev, imageUrl: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleOpenModal = (producto = null) => {
     if (producto) {
       setEditando(producto);
@@ -61,12 +76,24 @@ const Inventario = () => {
         quantityInStock: producto.quantityInStock || '',
         minStockLevel: producto.minStockLevel || 2,
         categoryId: producto.categoryId || '',
+        imageUrl: producto.imageUrl || '',
       });
+      setImagePreview(producto.imageUrl || null);
     } else {
       setEditando(null);
       setFormData(EMPTY_FORM);
+      setImagePreview(null);
     }
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setFormData(EMPTY_FORM);
+    setEditando(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSubmit = async (e) => {
@@ -78,6 +105,7 @@ const Inventario = () => {
       quantityInStock: parseInt(formData.quantityInStock),
       minStockLevel: parseInt(formData.minStockLevel),
       categoryId: formData.categoryId ? parseInt(formData.categoryId) : undefined,
+      imageUrl: formData.imageUrl || undefined,
     };
     let result;
     if (editando) {
@@ -86,9 +114,7 @@ const Inventario = () => {
       result = await createProducto(payload);
     }
     if (result) {
-      setShowModal(false);
-      setFormData(EMPTY_FORM);
-      setEditando(null);
+      handleCloseModal();
     }
   };
 
@@ -128,7 +154,6 @@ const Inventario = () => {
         </div>
       </div>
 
-      {}
       <div className="mb-6">
         <input
           type="text"
@@ -139,12 +164,12 @@ const Inventario = () => {
         />
       </div>
 
-      {}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Imagen</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">SKU</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nombre</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Categoría</th>
@@ -158,13 +183,13 @@ const Inventario = () => {
             <tbody className="bg-white divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 6 : 5} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={isAdmin ? 7 : 6} className="px-6 py-12 text-center text-slate-400">
                     <FiRefreshCw className="animate-spin inline mr-2" /> Cargando inventario...
                   </td>
                 </tr>
               ) : productosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 6 : 5} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={isAdmin ? 7 : 6} className="px-6 py-12 text-center text-slate-400">
                     <div className="text-4xl mb-3">📦</div>
                     <p>No hay productos en el inventario.</p>
                     {isAdmin && (
@@ -180,6 +205,19 @@ const Inventario = () => {
               ) : (
                 productosFiltrados.map((p) => (
                   <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3">
+                      {p.imageUrl ? (
+                        <img
+                          src={p.imageUrl}
+                          alt={p.name}
+                          className="w-12 h-12 object-cover rounded-lg border border-slate-200"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-slate-300">
+                          <FiPackage />
+                        </div>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600">{p.sku}</td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-slate-900">{p.name}</div>
@@ -187,7 +225,7 @@ const Inventario = () => {
                         <div className="text-xs text-slate-400 max-w-xs truncate">{p.description}</div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{p.category?.name || '—'}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{p.categoryName || '—'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -232,22 +270,53 @@ const Inventario = () => {
         </div>
       </div>
 
-      {}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200">
               <h3 className="text-lg font-bold text-slate-800">
                 {editando ? '✏️ Editar Repuesto' : '➕ Nuevo Repuesto'}
               </h3>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={handleCloseModal}
                 className="text-slate-400 hover:text-slate-600 text-2xl leading-none"
               >
                 <FiX />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Imagen del producto {!editando && <span className="text-red-500">*</span>}
+                </label>
+                <div
+                  className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-primary transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="preview" className="h-28 object-contain mx-auto rounded-lg" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 py-3 text-slate-400">
+                      <FiImage className="text-3xl" />
+                      <p className="text-sm">{editando ? 'Haz clic para cambiar imagen' : 'Haz clic para seleccionar imagen'}</p>
+                      <p className="text-xs">JPG, PNG, WebP</p>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    required={!editando}
+                    onChange={handleImageChange}
+                  />
+                </div>
+                {editando && !imagePreview && (
+                  <p className="text-xs text-amber-600 mt-1">⚠️ Si no seleccionas imagen nueva, se mantendrá la actual.</p>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">SKU *</label>
@@ -316,7 +385,7 @@ const Inventario = () => {
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={handleCloseModal}
                   className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium"
                 >
                   Cancelar

@@ -21,7 +21,7 @@ const Navbar = () => {
     { name: 'Inicio', path: '/' },
     { name: 'Catálogo', path: '/catalogo' },
     { name: 'Agendamiento', path: '/agendamiento' },
-    { name: 'Mis Órdenes', path: '/ordenes' },
+    { name: isStaff ? 'Órdenes' : 'Mis Órdenes', path: '/ordenes' },
   ];
 
   if (isStaff) {
@@ -56,7 +56,6 @@ const Navbar = () => {
               </Link>
             ))}
 
-            
             <Link
               to="/pago-carrito"
               className="relative p-2 text-slate-300 hover:text-accent transition-colors"
@@ -116,7 +115,7 @@ const Navbar = () => {
                 {link.name}
               </Link>
             ))}
-            
+
             <Link
               to="/pago-carrito"
               className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium hover:bg-slate-800"

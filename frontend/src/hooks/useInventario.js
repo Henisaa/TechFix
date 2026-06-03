@@ -58,6 +58,7 @@ export const useInventario = () => {
         minStockLevel: parseInt(form.minStockLevel || form.minStock || 2),
         status: 'ACTIVE',
         categoryId: form.categoryId ? parseInt(form.categoryId) : null,
+        imageUrl: form.imageUrl || null,
       };
       const response = await inventoryApi.post('', payload);
       toast.success('Producto agregado al catálogo');
@@ -83,6 +84,7 @@ export const useInventario = () => {
         quantityInStock: parseInt(form.quantityInStock || form.stock || 0),
         minStockLevel: parseInt(form.minStockLevel || form.minStock || 2),
         status: 'ACTIVE',
+        imageUrl: form.imageUrl !== undefined ? (form.imageUrl || null) : undefined,
       };
       const response = await inventoryApi.put(`/${id}`, payload);
       toast.success('Producto actualizado');
