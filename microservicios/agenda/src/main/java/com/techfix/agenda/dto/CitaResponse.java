@@ -16,6 +16,7 @@ public class CitaResponse {
     private TipoServicio tipoServicio;
     private EstadoCita estado;
     private String descripcion;
+    private String comuna;
     private ClienteResponse cliente;
     private TecnicoResponse tecnico;
     private BigDecimal precioCotizado;

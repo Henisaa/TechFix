@@ -5,6 +5,7 @@ import com.techfix.agenda.dto.CitaResponse;
 import com.techfix.agenda.dto.EstadoUpdateRequest;
 import com.techfix.agenda.dto.GestionServicioRequest;
 import com.techfix.agenda.dto.PrecioTicketRequest;
+import com.techfix.agenda.dto.ResumenComunaDto;
 import com.techfix.agenda.model.EstadoCita;
 
 import java.util.List;
@@ -34,4 +35,6 @@ public interface CitaService {
     CitaResponse cancelarCliente(Long id, com.techfix.agenda.dto.CancelarCitaClienteRequest request);
 
     void delete(Long id);
+
+    List<ResumenComunaDto> resumenPorComuna();
 }

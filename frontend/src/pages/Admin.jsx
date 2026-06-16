@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
 import { useUsuarios } from '../hooks/useUsuarios';
 import { useInventario } from '../hooks/useInventario';
@@ -7,7 +8,7 @@ import { useAdminStats } from '../hooks/useAdminStats';
 import {
   FiUsers, FiUserCheck, FiTool, FiActivity, FiPackage,
   FiPlus, FiX, FiSave, FiDollarSign,
-  FiChevronLeft, FiChevronRight, FiImage, FiRefreshCw,
+  FiChevronLeft, FiChevronRight, FiImage, FiRefreshCw, FiMapPin, FiDownload,
 } from 'react-icons/fi';
 
 const EMPTY_PRODUCT = { sku: '', name: '', description: '', price: '', stock: '', minStock: 2, imageUrl: '' };
@@ -114,13 +115,19 @@ const Admin = () => {
   const { user } = useAuth();
   const { usuarios, fetchUsuarios } = useUsuarios();
   const { productos, stats, fetchProductos, fetchStats, createProducto, loading: loadingStock } = useInventario();
-  const { citas, fetchTodasCitas } = useAgendamiento();
+  const { citas, fetchTodasCitas, fetchResumenPorComuna } = useAgendamiento();
 
   const [showProductModal, setShowProductModal] = useState(false);
   const [productForm, setProductForm] = useState(EMPTY_PRODUCT);
   const [imagePreview, setImagePreview] = useState(null);
   const [chartOffset, setChartOffset] = useState(0);
   const fileInputRef = useRef(null);
+
+  const now = new Date();
+  const [comunaResumen, setComunaResumen] = useState([]);
+  const [loadingComuna, setLoadingComuna] = useState(false);
+  const [selectedMes, setSelectedMes] = useState(now.getMonth());
+  const [selectedAnio, setSelectedAnio] = useState(now.getFullYear());
 
   const { piezasData, ordenesData, months, loading: loadingStats, refetch } = useAdminStats(chartOffset);
 
@@ -129,7 +136,13 @@ const Admin = () => {
     fetchProductos(0, 50);
     fetchStats();
     fetchTodasCitas();
-  }, [fetchUsuarios, fetchProductos, fetchStats, fetchTodasCitas]);
+    if (user?.role === 'ADMIN') {
+      setLoadingComuna(true);
+      fetchResumenPorComuna().then((data) => {
+        setComunaResumen(data);
+      }).finally(() => setLoadingComuna(false));
+    }
+  }, [fetchUsuarios, fetchProductos, fetchStats, fetchTodasCitas, fetchResumenPorComuna, user?.role]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -182,6 +195,42 @@ const Admin = () => {
     if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
     if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
     return `$${v}`;
+  };
+
+  const MONTH_NAMES_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+  const citasDelMes = useMemo(() =>
+    citas.filter((c) => {
+      if (!c.fechaHora) return false;
+      const d = new Date(c.fechaHora);
+      return d.getMonth() === selectedMes && d.getFullYear() === selectedAnio;
+    }),
+    [citas, selectedMes, selectedAnio]
+  );
+
+  const handleExportarExcel = () => {
+    const wb = XLSX.utils.book_new();
+
+    const resumenRows = [['Comuna', 'Total solicitudes', 'Completadas', 'En proceso', 'Pendientes']];
+    comunaResumen.forEach((r) => {
+      resumenRows.push([r.comuna, r.total, r.completadas, r.enProceso, r.pendientes]);
+    });
+    const ws1 = XLSX.utils.aoa_to_sheet(resumenRows);
+    XLSX.utils.book_append_sheet(wb, ws1, 'Resumen por Comuna');
+
+    const detalleRows = [['ID', 'Cliente', 'Comuna', 'Tipo Servicio', 'Estado', 'Técnico asignado', 'Fecha', 'Precio cotizado']];
+    citasDelMes.forEach((c) => {
+      const cliente = c.cliente ? `${c.cliente.nombre} ${c.cliente.apellido || ''}`.trim() : '';
+      const tecnico = c.tecnico ? `${c.tecnico.nombre} ${c.tecnico.apellido || ''}`.trim() : '';
+      const fecha = c.fechaHora ? new Date(c.fechaHora).toLocaleString('es-CL') : '';
+      detalleRows.push([c.id, cliente, c.comuna || '', c.tipoServicio, c.estado, tecnico, fecha, c.precioCotizado ?? '']);
+    });
+    const ws2 = XLSX.utils.aoa_to_sheet(detalleRows);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Detalle de Citas');
+
+    const mesLabel = MONTH_NAMES_ES[selectedMes].toLowerCase();
+    XLSX.writeFile(wb, `techfix-ventas-${mesLabel}-${selectedAnio}.xlsx`);
   };
 
   const quickLinks = [
@@ -343,6 +392,83 @@ const Admin = () => {
             ))}
           </div>
         </div>
+
+        {user?.role === 'ADMIN' && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <FiMapPin className="text-indigo-500" /> Ventas por Comuna
+              </h2>
+              <div className="flex items-center gap-3">
+                <select
+                  value={`${selectedMes}-${selectedAnio}`}
+                  onChange={(e) => {
+                    const [m, y] = e.target.value.split('-');
+                    setSelectedMes(Number(m));
+                    setSelectedAnio(Number(y));
+                  }}
+                  className="px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-700 focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white shadow-sm"
+                >
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    return (
+                      <option key={i} value={`${d.getMonth()}-${d.getFullYear()}`}>
+                        {MONTH_NAMES_ES[d.getMonth()]} {d.getFullYear()}
+                      </option>
+                    );
+                  })}
+                </select>
+                <button
+                  onClick={handleExportarExcel}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl shadow-md transition-all text-sm"
+                >
+                  <FiDownload /> Exportar Excel del mes
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+              {loadingComuna ? (
+                <div className="flex items-center justify-center py-12 text-slate-400">
+                  <FiRefreshCw className="animate-spin mr-2" /> Cargando datos...
+                </div>
+              ) : comunaResumen.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">Sin datos de comunas disponibles.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-100">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        {['Comuna', 'Total solicitudes', 'Completadas', 'En proceso', 'Pendientes'].map((h) => (
+                          <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {comunaResumen.map((r) => (
+                        <tr key={r.comuna} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-3 text-sm font-semibold text-slate-800 flex items-center gap-2">
+                            <FiMapPin className="text-indigo-400" /> {r.comuna}
+                          </td>
+                          <td className="px-6 py-3 text-sm font-bold text-slate-700">{r.total}</td>
+                          <td className="px-6 py-3">
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{r.completadas}</span>
+                          </td>
+                          <td className="px-6 py-3">
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">{r.enProceso}</span>
+                          </td>
+                          <td className="px-6 py-3">
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">{r.pendientes}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {showProductModal && (

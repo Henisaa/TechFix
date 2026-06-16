@@ -1,6 +1,7 @@
 package com.techfix.agenda.dto;
 
 import com.techfix.agenda.model.TipoServicio;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -16,6 +17,9 @@ public class CitaRequest {
     private TipoServicio tipoServicio;
 
     private String descripcion;
+
+    @NotBlank(message = "La comuna es obligatoria")
+    private String comuna;
 
     @NotNull(message = "El cliente es obligatorio")
     private Long clienteId;

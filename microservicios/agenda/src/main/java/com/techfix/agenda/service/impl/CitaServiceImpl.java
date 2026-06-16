@@ -5,6 +5,7 @@ import com.techfix.agenda.dto.CitaResponse;
 import com.techfix.agenda.dto.EstadoUpdateRequest;
 import com.techfix.agenda.dto.GestionServicioRequest;
 import com.techfix.agenda.dto.PrecioTicketRequest;
+import com.techfix.agenda.dto.ResumenComunaDto;
 import com.techfix.agenda.exception.BusinessException;
 import com.techfix.agenda.exception.ResourceNotFoundException;
 import com.techfix.agenda.mapper.CitaMapper;
@@ -105,6 +106,7 @@ public class CitaServiceImpl implements CitaService {
                 .fechaHora(request.getFechaHora())
                 .tipoServicio(request.getTipoServicio())
                 .descripcion(request.getDescripcion())
+                .comuna(request.getComuna())
                 .cliente(cliente)
                 .tecnico(tecnico)
                 .numeroOrden(generarNumeroOrden())
@@ -228,5 +230,19 @@ public class CitaServiceImpl implements CitaService {
         int anio = java.time.LocalDate.now().getYear();
         int sufijo = new Random().nextInt(9000) + 1000;
         return "TF-" + anio + "-" + sufijo;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ResumenComunaDto> resumenPorComuna() {
+        return citaRepository.resumenPorComuna().stream()
+                .map(row -> new ResumenComunaDto(
+                        (String) row[0],
+                        (Long) row[1],
+                        (Long) row[2],
+                        (Long) row[3],
+                        (Long) row[4]
+                ))
+                .toList();
     }
 }

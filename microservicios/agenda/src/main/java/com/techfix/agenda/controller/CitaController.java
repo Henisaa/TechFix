@@ -6,6 +6,7 @@ import com.techfix.agenda.dto.EstadoUpdateRequest;
 import com.techfix.agenda.dto.GestionServicioRequest;
 import com.techfix.agenda.dto.PrecioTicketRequest;
 import com.techfix.agenda.dto.CancelarCitaClienteRequest;
+import com.techfix.agenda.dto.ResumenComunaDto;
 import com.techfix.agenda.model.EstadoCita;
 import com.techfix.agenda.service.CitaService;
 import jakarta.validation.Valid;
@@ -45,6 +46,11 @@ public class CitaController {
     @GetMapping("/estado/{estado}")
     public ResponseEntity<List<CitaResponse>> getByEstado(@PathVariable EstadoCita estado) {
         return ResponseEntity.ok(citaService.findByEstado(estado));
+    }
+
+    @GetMapping("/resumen-por-comuna")
+    public ResponseEntity<List<ResumenComunaDto>> getResumenPorComuna() {
+        return ResponseEntity.ok(citaService.resumenPorComuna());
     }
 
     @PostMapping

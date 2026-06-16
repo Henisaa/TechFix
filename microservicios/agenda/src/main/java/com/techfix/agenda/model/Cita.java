@@ -42,6 +42,9 @@ public class Cita {
     @Column(length = 500)
     private String descripcion;
 
+    @Column(nullable = false, length = 100)
+    private String comuna;
+
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cliente_id", nullable = false)

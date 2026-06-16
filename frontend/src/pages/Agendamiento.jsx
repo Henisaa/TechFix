@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { scheduleApi } from '../services/api';
 import toast from 'react-hot-toast';
 import {
-  FiCalendar, FiClock, FiPlus, FiRefreshCw, FiCheckCircle, FiXCircle, FiTool, FiDollarSign, FiX, FiHash,
+  FiCalendar, FiClock, FiPlus, FiRefreshCw, FiCheckCircle, FiXCircle, FiTool, FiDollarSign, FiX, FiHash, FiMapPin,
 } from 'react-icons/fi';
 
 const TIPO_SERVICIO = ['REPARACION', 'INSTALACION'];
@@ -42,6 +42,7 @@ const Agendamiento = () => {
     descripcion: '',
     fecha: '',
     hora: '10:00',
+    comuna: '',
   });
 
   
@@ -78,13 +79,14 @@ const Agendamiento = () => {
       telefono: formData.telefono,
       tipoServicio: formData.tipoServicio,
       descripcion: formData.descripcion,
+      comuna: formData.comuna,
       fechaHora,
     });
     if (result) {
       setFormData({
         nombre: '', apellido: '', email: '', telefono: '',
         tipoServicio: 'REPARACION', descripcion: '',
-        fecha: '', hora: '10:00',
+        fecha: '', hora: '10:00', comuna: '',
       });
       const clienteAgendaId = result.clienteAgendaId;
       if (clienteAgendaId) fetchCitasByCliente(clienteAgendaId);
@@ -208,6 +210,26 @@ const Agendamiento = () => {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Comuna *</label>
+              <select
+                required
+                className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={formData.comuna}
+                onChange={(e) => setFormData({ ...formData, comuna: e.target.value })}
+              >
+                <option value="" disabled>Selecciona tu comuna</option>
+                {[
+                  'Independencia', 'La Florida', 'Las Condes', 'Lo Barnechea',
+                  'Macul', 'Maipú', 'Ñuñoa', 'Peñalolén',
+                  'Providencia', 'Pudahuel', 'Recoleta', 'San Bernardo',
+                  'San Miguel', 'Santiago Centro', 'Vitacura',
+                ].map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Descripción del Problema *</label>
               <textarea
                 required
@@ -283,6 +305,7 @@ const Agendamiento = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">ID</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Cliente</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Servicio</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Comuna</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Fecha/Hora</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Estado</th>
                     {isStaff && <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Acciones</th>}
@@ -309,6 +332,12 @@ const Agendamiento = () => {
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-slate-900">{cita.tipoServicio}</div>
                         <div className="text-xs text-slate-400 max-w-xs truncate">{cita.descripcion}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1 text-sm text-slate-600">
+                          <FiMapPin className="text-slate-400 text-xs flex-shrink-0" />
+                          {cita.comuna || '—'}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-700">
                         {cita.fechaHora ? new Date(cita.fechaHora).toLocaleString('es-CL') : '—'}

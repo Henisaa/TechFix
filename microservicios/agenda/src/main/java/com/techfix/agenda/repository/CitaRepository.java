@@ -19,7 +19,6 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
 
     List<Cita> findByEstado(EstadoCita estado);
 
-    
     @Query("SELECT COUNT(c) FROM Cita c " +
            "WHERE c.tecnico.id = :tecnicoId " +
            "AND c.fechaHora >= :startOfDay " +
@@ -29,4 +28,11 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
             @Param("tecnicoId") Long tecnicoId,
             @Param("startOfDay") LocalDateTime startOfDay,
             @Param("endOfDay") LocalDateTime endOfDay);
+
+    @Query("SELECT c.comuna, COUNT(c), " +
+           "SUM(CASE WHEN c.estado = com.techfix.agenda.model.EstadoCita.COMPLETADA THEN 1L ELSE 0L END), " +
+           "SUM(CASE WHEN c.estado = com.techfix.agenda.model.EstadoCita.PENDIENTE THEN 1L ELSE 0L END), " +
+           "SUM(CASE WHEN c.estado = com.techfix.agenda.model.EstadoCita.EN_PROCESO THEN 1L ELSE 0L END) " +
+           "FROM Cita c GROUP BY c.comuna ORDER BY c.comuna")
+    List<Object[]> resumenPorComuna();
 }

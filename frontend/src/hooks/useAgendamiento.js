@@ -90,6 +90,7 @@ export const useAgendamiento = () => {
         fechaHora: datos.fechaHora,
         tipoServicio: datos.tipoServicio || 'REPARACION',
         descripcion: datos.descripcion,
+        comuna: datos.comuna,
         clienteId,
       });
 
@@ -160,6 +161,15 @@ export const useAgendamiento = () => {
     }
   };
 
+  const fetchResumenPorComuna = useCallback(async () => {
+    try {
+      const res = await scheduleApi.get('/resumen-por-comuna');
+      return res.data || [];
+    } catch {
+      return [];
+    }
+  }, []);
+
   return {
     citas,
     clientes,
@@ -176,5 +186,6 @@ export const useAgendamiento = () => {
     eliminarCita,
     gestionarServicio,
     cancelarCitaCliente,
+    fetchResumenPorComuna,
   };
 };
