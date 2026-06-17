@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="PagoServiceImpl — Unit Tests" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-06-17T20:56:33.022Z" hostname="DESKTOP-SUTL6B5" time="0.081">
+  <properties/>
+  <testcase name="verPago: ID existente → devuelve el pago" classname="com.techfix.payment.pago.service.PagoServiceImplTest" time="0.05"/>
+  <testcase name="crearPago: método TRANSFERENCIA sin referenciaExterna → ConflictException" classname="com.techfix.payment.pago.service.PagoServiceImplTest" time="0.002"/>
+  <testcase name="crearPago: EFECTIVO con referencia provista → guarda en estado PENDIENTE" classname="com.techfix.payment.pago.service.PagoServiceImplTest" time="0.002"/>
+  <testcase name="alterarPago: cambio a PAGADO → setea confirmedBy" classname="com.techfix.payment.pago.service.PagoServiceImplTest" time="0.002"/>
+  <testcase name="verPago: ID inexistente → ResourceNotFoundException" classname="com.techfix.payment.pago.service.PagoServiceImplTest" time="0.002"/>
+  <testcase name="crearPago: ya existe pago PENDIENTE/PAGADO para la cita → ConflictException" classname="com.techfix.payment.pago.service.PagoServiceImplTest" time="0.003"/>
+  <testcase name="alterarPago: cambio a ANULADO sin razón → ConflictException" classname="com.techfix.payment.pago.service.PagoServiceImplTest" time="0.002"/>
+  <testcase name="alterarPago: pago ANULADO → ConflictException" classname="com.techfix.payment.pago.service.PagoServiceImplTest" time="0.003"/>
+  <testcase name="crearPago: método EFECTIVO sin referenciaExterna → genera referencia automática" classname="com.techfix.payment.pago.service.PagoServiceImplTest" time="0.004"/>
+  <testcase name="alterarPago: pago PAGADO → ConflictException" classname="com.techfix.payment.pago.service.PagoServiceImplTest" time="0.002"/>
+  <testcase name="crearPago: método TARJETA_CREDITO sin referenciaExterna → ConflictException" classname="com.techfix.payment.pago.service.PagoServiceImplTest" time="0.002"/>
+  <system-out><![CDATA[16:56:33.072 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Consultando datos de facturación del pago id=5
+16:56:33.076 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Iniciando registro de pago para visita técnica id=1
+16:56:33.079 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Iniciando registro de pago para visita técnica id=1
+16:56:33.079 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Pago creado exitosamente con id=null
+16:56:33.081 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Alterando pago id=1
+16:56:33.081 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Consultando datos de facturación del pago id=1
+16:56:33.081 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Pago id=1 actualizado. Estado actual: PAGADO
+16:56:33.083 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Consultando datos de facturación del pago id=99
+16:56:33.086 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Iniciando registro de pago para visita técnica id=1
+16:56:33.089 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Alterando pago id=1
+16:56:33.090 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Consultando datos de facturación del pago id=1
+16:56:33.093 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Alterando pago id=1
+16:56:33.093 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Consultando datos de facturación del pago id=1
+16:56:33.096 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Iniciando registro de pago para visita técnica id=1
+16:56:33.097 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Pago creado exitosamente con id=null
+16:56:33.100 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Alterando pago id=1
+16:56:33.100 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Consultando datos de facturación del pago id=1
+16:56:33.103 [Test worker] INFO com.techfix.payment.pago.service.PagoServiceImpl -- Iniciando registro de pago para visita técnica id=1
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

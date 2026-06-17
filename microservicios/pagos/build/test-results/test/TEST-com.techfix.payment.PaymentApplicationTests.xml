@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.techfix.payment.PaymentApplicationTests" tests="1" skipped="1" failures="0" errors="0" timestamp="2026-06-17T20:56:31.939Z" hostname="DESKTOP-SUTL6B5" time="0.001">
+  <properties/>
+  <testcase name="contextLoads()" classname="com.techfix.payment.PaymentApplicationTests" time="0.0">
+    <skipped/>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

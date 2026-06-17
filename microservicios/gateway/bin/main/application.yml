@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: techfix-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+            allowedHeaders: "*"
+server:
+  port: ${SERVER_PORT:8090}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.techfix.gateway: DEBUG
+internal:
+  api:
+    secret: ${INTERNAL_API_SECRET:techfix-internal-secret-2024}
+jwt:
+  secret: ${JWT_SECRET:cGFyYWJpZW5vZGViZXJpYXNlc3RhcmJhc2U2NHRlY2hmaXgK}
+

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="OrdenCarritoService — Unit Tests" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-06-17T20:56:31.945Z" hostname="DESKTOP-SUTL6B5" time="1.073">
+  <properties/>
+  <testcase name="verOrdenesPorCliente: delega correctamente al repositorio" classname="com.techfix.payment.pago.service.OrdenCarritoServiceTest" time="1.03"/>
+  <testcase name="crearOrden: calcula total correctamente y guarda con estado PAGADO" classname="com.techfix.payment.pago.service.OrdenCarritoServiceTest" time="0.015"/>
+  <testcase name="verOrden: ID inexistente → NoSuchElementException" classname="com.techfix.payment.pago.service.OrdenCarritoServiceTest" time="0.004"/>
+  <testcase name="verOrden: ID existente → devuelve la orden" classname="com.techfix.payment.pago.service.OrdenCarritoServiceTest" time="0.002"/>
+  <system-out><![CDATA[16:56:33.001 [Test worker] INFO com.techfix.payment.pago.service.OrdenCarritoService -- Orden de carrito creada: id=10 clienteId=42 total=35000
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

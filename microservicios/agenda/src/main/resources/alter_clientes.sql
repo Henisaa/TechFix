@@ -1,0 +1,1 @@
+ALTER TABLE clientes ALTER COLUMN apellido DROP NOT NULL;

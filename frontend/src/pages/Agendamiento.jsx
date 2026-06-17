@@ -1,0 +1,485 @@
+import { useState, useEffect } from 'react';
+import { useAgendamiento } from '../hooks/useAgendamiento';
+import { useAuth } from '../context/AuthContext';
+import { scheduleApi } from '../services/api';
+import toast from 'react-hot-toast';
+import {
+  FiCalendar, FiClock, FiPlus, FiRefreshCw, FiCheckCircle, FiXCircle, FiTool, FiDollarSign, FiX, FiHash, FiMapPin,
+} from 'react-icons/fi';
+
+const TIPO_SERVICIO = ['REPARACION', 'INSTALACION'];
+
+const ESTADO_COLORS = {
+  PENDIENTE: 'bg-yellow-100 text-yellow-800',
+  EN_PROCESO: 'bg-orange-100 text-orange-800',
+  COMPLETADA: 'bg-green-100 text-green-800',
+  CANCELADA: 'bg-red-100 text-red-800',
+};
+
+const Agendamiento = () => {
+  const { user } = useAuth();
+  const {
+    citas,
+    tecnicos,
+    loading,
+    fetchTodasCitas,
+    fetchCitasByCliente,
+    fetchCitasByTecnico,
+    fetchTecnicos,
+    resolveClienteAgendaId,
+    crearCita,
+    actualizarEstado,
+    eliminarCita,
+  } = useAgendamiento();
+
+  const [activeTab, setActiveTab] = useState('mis-citas');
+  const [formData, setFormData] = useState({
+    nombre: '',
+    apellido: '',
+    email: '',
+    telefono: '',
+    tipoServicio: 'REPARACION',
+    descripcion: '',
+    fecha: '',
+    hora: '10:00',
+    comuna: '',
+  });
+
+  
+  const [precioModal, setPrecioModal] = useState(null); 
+  const [precioForm, setPrecioForm] = useState({ precioCotizado: '', descripcionTrabajo: '' });
+  const [loadingPrecio, setLoadingPrecio] = useState(false);
+
+  const isStaff = user?.role === 'ADMIN' || user?.role === 'TECNICO';
+
+  useEffect(() => {
+    if (!user) return;
+    fetchTecnicos();
+    if (isStaff) {
+      fetchTodasCitas();
+    } else {
+      resolveClienteAgendaId(user).then(id => {
+        if (id) fetchCitasByCliente(id);
+      });
+    }
+  }, [user]);
+
+  const handleRefresh = () => {
+    if (isStaff) fetchTodasCitas();
+    else resolveClienteAgendaId(user).then(id => { if (id) fetchCitasByCliente(id); });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const fechaHora = `${formData.fecha}T${formData.hora}:00`;
+    const result = await crearCita({
+      nombre: formData.nombre || user.fullName || user.username,
+      apellido: formData.apellido || '',
+      email: user.email || `${user.username}@techfix.cl`,
+      telefono: formData.telefono,
+      tipoServicio: formData.tipoServicio,
+      descripcion: formData.descripcion,
+      comuna: formData.comuna,
+      fechaHora,
+    });
+    if (result) {
+      setFormData({
+        nombre: '', apellido: '', email: '', telefono: '',
+        tipoServicio: 'REPARACION', descripcion: '',
+        fecha: '', hora: '10:00', comuna: '',
+      });
+      const clienteAgendaId = result.clienteAgendaId;
+      if (clienteAgendaId) fetchCitasByCliente(clienteAgendaId);
+      setActiveTab('mis-citas');
+    }
+  };
+
+  const handleEstado = async (id, estado) => {
+    const result = await actualizarEstado(id, estado);
+    if (result) handleRefresh();
+  };
+
+  
+  const handleAbrirPrecioModal = (cita) => {
+    setPrecioModal({ citaId: cita.id });
+    setPrecioForm({ precioCotizado: '', descripcionTrabajo: cita.descripcion || '' });
+  };
+
+  
+  const handleAsignarPrecio = async (e) => {
+    e.preventDefault();
+    if (!precioModal || !precioForm.precioCotizado) return;
+    setLoadingPrecio(true);
+    try {
+      await scheduleApi.patch(`/${precioModal.citaId}/precio`, {
+        precioCotizado: parseFloat(precioForm.precioCotizado),
+      });
+      toast.success('Precio asignado al ticket. El cliente ya puede pagar.');
+      setPrecioModal(null);
+      handleRefresh();
+    } catch {
+      toast.error('No se pudo asignar el precio');
+    } finally {
+      setLoadingPrecio(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Seguro que deseas cancelar esta cita?')) {
+      const ok = await eliminarCita(id);
+      if (ok) handleRefresh();
+    }
+  };
+
+  return (
+    <div className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+            <FiCalendar className="text-primary" /> Agendamiento de Visitas
+          </h1>
+          <p className="text-slate-600 mt-1">Solicita y gestiona visitas técnicas</p>
+        </div>
+        <button onClick={handleRefresh} className="text-slate-500 hover:text-primary transition-colors" title="Actualizar">
+          <FiRefreshCw className={loading ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      {}
+      <div className="flex border-b border-slate-200 mb-8 gap-1">
+        {!isStaff && (
+          <button
+            onClick={() => setActiveTab('nueva')}
+            className={`px-5 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
+              activeTab === 'nueva' ? 'border-b-2 border-primary text-primary' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <FiPlus /> Nueva Cita
+          </button>
+        )}
+        <button
+          onClick={() => setActiveTab('mis-citas')}
+          className={`px-5 py-3 text-sm font-medium transition-colors ${
+            activeTab === 'mis-citas' ? 'border-b-2 border-primary text-primary' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          {isStaff ? '📋 Todas las Citas' : 'Mis Citas'}
+        </button>
+      </div>
+
+      {}
+      {activeTab === 'nueva' && !isStaff && (
+        <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+          <h2 className="text-xl font-bold text-slate-800 mb-6">📝 Solicitar Visita Técnica</h2>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder={user.fullName || user.username}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={formData.nombre}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Teléfono *</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="+56 9 1234 5678"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={formData.telefono}
+                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Servicio *</label>
+              <select
+                className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={formData.tipoServicio}
+                onChange={(e) => setFormData({ ...formData, tipoServicio: e.target.value })}
+              >
+                <option value="REPARACION">🔧 Reparación</option>
+                <option value="INSTALACION">💻 Instalación</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Comuna *</label>
+              <select
+                required
+                className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={formData.comuna}
+                onChange={(e) => setFormData({ ...formData, comuna: e.target.value })}
+              >
+                <option value="" disabled>Selecciona tu comuna</option>
+                {[
+                  'Independencia', 'La Florida', 'Las Condes', 'Lo Barnechea',
+                  'Macul', 'Maipú', 'Ñuñoa', 'Peñalolén',
+                  'Providencia', 'Pudahuel', 'Recoleta', 'San Bernardo',
+                  'San Miguel', 'Santiago Centro', 'Vitacura',
+                ].map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Descripción del Problema *</label>
+              <textarea
+                required
+                rows="3"
+                placeholder="Describe el problema o servicio requerido..."
+                className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                value={formData.descripcion}
+                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Fecha *</label>
+                <input
+                  type="date"
+                  required
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={formData.fecha}
+                  onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Hora *</label>
+                <input
+                  type="time"
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+                  value={formData.hora}
+                  onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold py-3 px-8 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+            >
+              <FiCalendar /> {loading ? 'Agendando...' : 'Solicitar Visita'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {}
+      {activeTab === 'mis-citas' && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-slate-400">
+              <FiRefreshCw className="animate-spin mr-3 text-2xl" /> Cargando citas...
+            </div>
+          ) : citas.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-5xl mb-4"><FiCalendar className="inline text-slate-300" /></div>
+              <p className="text-slate-500">No hay citas registradas.</p>
+              {!isStaff && (
+                <button
+                  onClick={() => setActiveTab('nueva')}
+                  className="mt-4 inline-flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  <FiPlus /> Agendar una visita
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">N° Orden</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Cliente</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Servicio</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Comuna</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Fecha/Hora</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Estado</th>
+                    {isStaff && <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">Acciones</th>}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {citas.map((cita) => (
+                    <tr key={cita.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1">
+                          <FiHash className="text-slate-400 text-xs" />
+                          <span className="text-sm font-mono font-semibold text-primary">
+                            {cita.numeroOrden || '—'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500">#{cita.id}</td>
+                      <td className="px-6 py-4 text-sm text-slate-700">
+                        <div className="font-medium">
+                          {cita.cliente ? `${cita.cliente.nombre} ${cita.cliente.apellido || ''}` : '—'}
+                        </div>
+                        {cita.cliente?.telefono && <div className="text-xs text-slate-400">{cita.cliente.telefono}</div>}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-slate-900">{cita.tipoServicio}</div>
+                        <div className="text-xs text-slate-400 max-w-xs truncate">{cita.descripcion}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1 text-sm text-slate-600">
+                          <FiMapPin className="text-slate-400 text-xs flex-shrink-0" />
+                          {cita.comuna || '—'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-700">
+                        {cita.fechaHora ? new Date(cita.fechaHora).toLocaleString('es-CL') : '—'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[cita.estado] || 'bg-slate-100 text-slate-700'}`}>
+                          {cita.estado}
+                        </span>
+                      </td>
+                      {isStaff && (
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            {cita.estado === 'PENDIENTE' && (
+                              <button
+                                onClick={() => handleEstado(cita.id, 'EN_PROCESO')}
+                                title="Iniciar"
+                                className="text-orange-500 hover:text-orange-700 text-sm"
+                              >
+                                ▶ Iniciar
+                              </button>
+                            )}
+                            {cita.estado === 'EN_PROCESO' && (
+                              <button
+                                onClick={() => handleEstado(cita.id, 'COMPLETADA')}
+                                className="text-green-500 hover:text-green-700 text-sm"
+                              >
+                                <FiCheckCircle className="inline" /> Completar
+                              </button>
+                            )}
+                            {cita.estado === 'COMPLETADA' && (cita.estadoPagoTicket === 'SIN_PRECIO' || !cita.estadoPagoTicket) && (
+                              <button
+                                onClick={() => handleAbrirPrecioModal(cita)}
+                                className="flex items-center gap-1 text-primary hover:text-blue-700 text-sm font-medium"
+                                title="Asignar precio al ticket"
+                              >
+                                <FiDollarSign /> Asignar Precio
+                              </button>
+                            )}
+                            {cita.estado !== 'CANCELADA' && cita.estado !== 'COMPLETADA' && (
+                              <button
+                                onClick={() => handleDelete(cita.id)}
+                                className="text-red-400 hover:text-red-600"
+                                title="Cancelar"
+                              >
+                                <FiXCircle />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {precioModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <FiDollarSign className="text-primary" /> Asignar Precio al Ticket #{precioModal.citaId}
+              </h3>
+              <button
+                onClick={() => setPrecioModal(null)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <FiX className="text-xl" />
+              </button>
+            </div>
+            <form onSubmit={handleAsignarPrecio} className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Descripción del Trabajo Realizado
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder="Ej: Se reemplazó la placa base y se actualizó el firmware..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                  value={precioForm.descripcionTrabajo}
+                  onChange={(e) => setPrecioForm({ ...precioForm, descripcionTrabajo: e.target.value })}
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Esta descripción es informativa para el cliente.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Precio del Servicio (CLP) <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">$</span>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    step="1"
+                    placeholder="0"
+                    className="w-full pl-8 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                    value={precioForm.precioCotizado}
+                    onChange={(e) => setPrecioForm({ ...precioForm, precioCotizado: e.target.value })}
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Al confirmar, el cliente recibirá la opción de pagar este monto.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setPrecioModal(null)}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 font-medium text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={loadingPrecio || !precioForm.precioCotizado}
+                  className="flex items-center gap-2 bg-primary hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-all text-sm"
+                >
+                  {loadingPrecio ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      Asignando...
+                    </>
+                  ) : (
+                    <><FiDollarSign /> Asignar Precio</>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Agendamiento;
