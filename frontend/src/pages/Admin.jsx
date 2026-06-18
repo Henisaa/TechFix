@@ -5,6 +5,7 @@ import { useUsuarios } from '../hooks/useUsuarios';
 import { useInventario } from '../hooks/useInventario';
 import { useAgendamiento } from '../hooks/useAgendamiento';
 import { useAdminStats } from '../hooks/useAdminStats';
+import { MOCK_COMUNAS, MOCK_RAW_PAGOS } from '../data/mockStats';
 import {
   FiUsers, FiUserCheck, FiTool, FiActivity, FiPackage,
   FiPlus, FiX, FiSave, FiDollarSign,
@@ -129,7 +130,7 @@ const Admin = () => {
   const [selectedMes, setSelectedMes] = useState(now.getMonth());
   const [selectedAnio, setSelectedAnio] = useState(now.getFullYear());
 
-  const { piezasData, ordenesData, months, loading: loadingStats, refetch } = useAdminStats(chartOffset);
+  const { piezasData, ordenesData, rawOrdenes, rawPagos, months, loading: loadingStats, refetch } = useAdminStats(chartOffset);
 
   useEffect(() => {
     fetchUsuarios();
@@ -209,12 +210,49 @@ const Admin = () => {
     [citas, selectedMes, selectedAnio]
   );
 
+  const citaIdToComuna = useMemo(() => {
+    const map = {};
+    citas.forEach((c) => { if (c.id && c.comuna) map[c.id] = c.comuna; });
+    MOCK_RAW_PAGOS.forEach((p) => { if (p.idVisitaTecnica && p._mockComuna) map[p.idVisitaTecnica] = p._mockComuna; });
+    return map;
+  }, [citas]);
+
+  const ingresosPorComuna = useMemo(() => {
+    const acc = {};
+    rawPagos.forEach((p) => {
+      const comuna = p._mockComuna || citaIdToComuna[p.idVisitaTecnica];
+      if (!comuna) return;
+      acc[comuna] = (acc[comuna] || 0) + parseFloat(p.monto ?? 0);
+    });
+    return acc;
+  }, [rawPagos, citaIdToComuna]);
+
+  const comunaResumenEnriquecido = useMemo(() => {
+    const realMap = {};
+    comunaResumen.forEach((r) => { realMap[r.comuna] = r; });
+    const mockMap = {};
+    MOCK_COMUNAS.forEach((m) => { mockMap[m.comuna] = m; });
+    const allComunas = new Set([...Object.keys(realMap), ...Object.keys(mockMap)]);
+    return Array.from(allComunas).map((comuna) => {
+      const real = realMap[comuna];
+      const mock = mockMap[comuna];
+      return {
+        comuna,
+        total: (real?.total ?? 0) + (mock?.total ?? 0),
+        completadas: (real?.completadas ?? 0) + (mock?.completadas ?? 0),
+        enProceso: (real?.enProceso ?? 0) + (mock?.enProceso ?? 0),
+        pendientes: (real?.pendientes ?? 0) + (mock?.pendientes ?? 0),
+        ingresos: Math.round(ingresosPorComuna[comuna] || 0),
+      };
+    }).sort((a, b) => b.total - a.total);
+  }, [comunaResumen, ingresosPorComuna]);
+
   const handleExportarExcel = () => {
     const wb = XLSX.utils.book_new();
 
-    const resumenRows = [['Comuna', 'Total solicitudes', 'Completadas', 'En proceso', 'Pendientes']];
-    comunaResumen.forEach((r) => {
-      resumenRows.push([r.comuna, r.total, r.completadas, r.enProceso, r.pendientes]);
+    const resumenRows = [['Comuna', 'Total solicitudes', 'Completadas', 'En proceso', 'Pendientes', 'Ingresos (CLP)']];
+    comunaResumenEnriquecido.forEach((r) => {
+      resumenRows.push([r.comuna, r.total, r.completadas, r.enProceso, r.pendientes, r.ingresos]);
     });
     const ws1 = XLSX.utils.aoa_to_sheet(resumenRows);
     XLSX.utils.book_append_sheet(wb, ws1, 'Resumen por Comuna');
@@ -228,6 +266,33 @@ const Admin = () => {
     });
     const ws2 = XLSX.utils.aoa_to_sheet(detalleRows);
     XLSX.utils.book_append_sheet(wb, ws2, 'Detalle de Citas');
+
+    const piezasRows = [['Mes', 'Total vendido (CLP)']];
+    piezasData.forEach((d) => piezasRows.push([d.label, d.value]));
+    const ws3 = XLSX.utils.aoa_to_sheet(piezasRows);
+    XLSX.utils.book_append_sheet(wb, ws3, 'Venta de Piezas por Mes');
+
+    const ordenesRows = [['Mes', 'Ingresos (CLP)']];
+    ordenesData.forEach((d) => ordenesRows.push([d.label, d.value]));
+    const ws4 = XLSX.utils.aoa_to_sheet(ordenesRows);
+    XLSX.utils.book_append_sheet(wb, ws4, 'Órdenes de Servicio por Mes');
+
+    const pagosRows = [['ID Pago', 'ID Cita', 'Comuna', 'Monto (CLP)', 'Método de pago', 'Fecha pago']];
+    rawPagos.forEach((p) => {
+      const comuna = p._mockComuna || citaIdToComuna[p.idVisitaTecnica] || '';
+      const fecha = p.fechaPago ? new Date(p.fechaPago).toLocaleString('es-CL') : '';
+      pagosRows.push([p.id, p.idVisitaTecnica, comuna, parseFloat(p.monto ?? 0), p.metodoPago, fecha]);
+    });
+    const ws5 = XLSX.utils.aoa_to_sheet(pagosRows);
+    XLSX.utils.book_append_sheet(wb, ws5, 'Detalle Pagos Servicios');
+
+    const carritoRows = [['ID Orden', 'Cliente', 'Monto total (CLP)', 'Método de pago', 'Fecha']];
+    rawOrdenes.forEach((o) => {
+      const fecha = o.createdAt ? new Date(o.createdAt).toLocaleString('es-CL') : '';
+      carritoRows.push([o.id, o.clienteUsername || '', parseFloat(o.montoTotal ?? 0), o.metodoPago, fecha]);
+    });
+    const ws6 = XLSX.utils.aoa_to_sheet(carritoRows);
+    XLSX.utils.book_append_sheet(wb, ws6, 'Detalle Ventas Piezas');
 
     const mesLabel = MONTH_NAMES_ES[selectedMes].toLowerCase();
     XLSX.writeFile(wb, `techfix-ventas-${mesLabel}-${selectedAnio}.xlsx`);
@@ -432,20 +497,20 @@ const Admin = () => {
                 <div className="flex items-center justify-center py-12 text-slate-400">
                   <FiRefreshCw className="animate-spin mr-2" /> Cargando datos...
                 </div>
-              ) : comunaResumen.length === 0 ? (
+              ) : comunaResumenEnriquecido.length === 0 ? (
                 <div className="text-center py-12 text-slate-400">Sin datos de comunas disponibles.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-100">
                     <thead className="bg-slate-50">
                       <tr>
-                        {['Comuna', 'Total solicitudes', 'Completadas', 'En proceso', 'Pendientes'].map((h) => (
+                        {['Comuna', 'Total solicitudes', 'Completadas', 'En proceso', 'Pendientes', 'Ingresos (CLP)'].map((h) => (
                           <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {comunaResumen.map((r) => (
+                      {comunaResumenEnriquecido.map((r) => (
                         <tr key={r.comuna} className="hover:bg-slate-50 transition-colors">
                           <td className="px-6 py-3 text-sm font-semibold text-slate-800 flex items-center gap-2">
                             <FiMapPin className="text-indigo-400" /> {r.comuna}
@@ -459,6 +524,9 @@ const Admin = () => {
                           </td>
                           <td className="px-6 py-3">
                             <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">{r.pendientes}</span>
+                          </td>
+                          <td className="px-6 py-3 text-sm font-bold text-emerald-700">
+                            {r.ingresos > 0 ? formatCLP(r.ingresos) : <span className="text-slate-300">—</span>}
                           </td>
                         </tr>
                       ))}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { paymentApi } from '../services/api';
+import { MOCK_RAW_ORDENES, MOCK_RAW_PAGOS } from '../data/mockStats';
 
 const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -42,9 +43,17 @@ function groupByMonth(items, dateField, amountField, months) {
   });
 }
 
+function mergeUnique(realItems, mockItems, idField = 'id') {
+  const realIds = new Set(realItems.map((i) => i[idField]));
+  const extras = mockItems.filter((i) => !realIds.has(i[idField]));
+  return [...realItems, ...extras];
+}
+
 export const useAdminStats = (offset = 0) => {
   const [piezasData, setPiezasData] = useState([]);
   const [ordenesData, setOrdenesData] = useState([]);
+  const [rawOrdenes, setRawOrdenes] = useState([]);
+  const [rawPagos, setRawPagos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [months, setMonths] = useState([]);
 
@@ -58,17 +67,26 @@ export const useAdminStats = (offset = 0) => {
         paymentApi.get('/lista'),
       ]);
 
-      const ordenes = carritoRes.status === 'fulfilled' ? (carritoRes.value.data || []) : [];
-      const pagos = pagosRes.status === 'fulfilled' ? (pagosRes.value.data || []) : [];
+      const realOrdenes = carritoRes.status === 'fulfilled' ? (carritoRes.value.data || []) : [];
+      const realPagos = pagosRes.status === 'fulfilled' ? (pagosRes.value.data || []) : [];
 
-      const piezasFiltered = ordenes.filter((o) => o.estadoOrden === 'PAGADO');
-      const pagosFiltered = pagos.filter((p) => p.estadoPago === 'PAGADO');
+      const realPagadas = realOrdenes.filter((o) => o.estadoOrden === 'PAGADO');
+      const realPagosFiltrados = realPagos.filter((p) => p.estadoPago === 'PAGADO');
 
-      setPiezasData(groupByMonth(piezasFiltered, 'createdAt', 'montoTotal', currentMonths));
-      setOrdenesData(groupByMonth(pagosFiltered, 'fechaPago', 'monto', currentMonths));
+      const combinedOrdenes = mergeUnique(realPagadas, MOCK_RAW_ORDENES);
+      const combinedPagos = mergeUnique(realPagosFiltrados, MOCK_RAW_PAGOS);
+
+      setPiezasData(groupByMonth(combinedOrdenes, 'createdAt', 'montoTotal', currentMonths));
+      setOrdenesData(groupByMonth(combinedPagos, 'fechaPago', 'monto', currentMonths));
+      setRawOrdenes(combinedOrdenes);
+      setRawPagos(combinedPagos);
     } catch {
-      setPiezasData(currentMonths.map((m) => ({ label: m.label, value: 0 })));
-      setOrdenesData(currentMonths.map((m) => ({ label: m.label, value: 0 })));
+      const combinedOrdenes = MOCK_RAW_ORDENES;
+      const combinedPagos = MOCK_RAW_PAGOS;
+      setPiezasData(groupByMonth(combinedOrdenes, 'createdAt', 'montoTotal', currentMonths));
+      setOrdenesData(groupByMonth(combinedPagos, 'fechaPago', 'monto', currentMonths));
+      setRawOrdenes(combinedOrdenes);
+      setRawPagos(combinedPagos);
     } finally {
       setLoading(false);
     }
@@ -80,5 +98,5 @@ export const useAdminStats = (offset = 0) => {
     return () => clearInterval(interval);
   }, [fetchStats]);
 
-  return { piezasData, ordenesData, months, loading, refetch: fetchStats };
+  return { piezasData, ordenesData, rawOrdenes, rawPagos, months, loading, refetch: fetchStats };
 };
